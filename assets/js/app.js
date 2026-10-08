@@ -1,0 +1,393 @@
+import { DEFAULTS, HTF, analyze } from './engine.js';
+import { backtestSymbol, summarize } from './backtest.js';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, INTERVAL_MS } from './binance.js';
+import { renderSymbolChart, renderEquity } from './charts.js';
+import {
+  fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
+  describeSetup, describeStatus, describeWait,
+} from './texts.js';
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const TFS = ['15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
+const TF_LABEL = { '15m': '15 min', '30m': '30 min', '1h': '1 hora', '2h': '2 horas', '4h': '4 horas', '6h': '6 horas', '12h': '12 horas', '1d': 'Diário' };
+const HTF_LABEL = { '1h': '1h', '2h': '2h', '4h': '4h', '8h': '8h', '1d': 'diário', '3d': '3 dias', '1w': 'semanal' };
+
+// ---------------------------------------------------------------------------
+// Configurações (guardadas só neste navegador).
+const CFG_KEY = 'korbuilscanner.cfg.v1';
+const CFG_DEFAULTS = { ...DEFAULTS, riskPct: 1, extra: 'MEUSDT' };
+let cfg = loadCfg();
+
+function loadCfg() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    return { ...CFG_DEFAULTS, ...saved };
+  } catch { return { ...CFG_DEFAULTS }; }
+}
+function saveCfg() {
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch { /* navegador sem armazenamento: vale só nesta visita */ }
+}
+const extraSymbols = () => (cfg.extra || '').split(/[\s,;]+/).map((s) => s.trim().toUpperCase()).filter((s) => /^[A-Z0-9]{2,20}USDT$/.test(s));
+
+// ---------------------------------------------------------------------------
+// Abas
+function showTab(name) {
+  for (const b of $$('.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  for (const s of $$('.tab')) s.hidden = s.id !== `tab-${name}`;
+}
+
+function progress(sectionSel, frac) {
+  const p = $(`${sectionSel} .progress`);
+  p.hidden = frac == null;
+  if (frac != null) p.querySelector('.bar').style.width = `${Math.round(frac * 100)}%`;
+}
+function setStatus(sel, msg, error = false) {
+  const el = $(sel);
+  el.textContent = msg;
+  el.classList.toggle('error', error);
+}
+
+async function symbolList(n) {
+  const top = await topSymbols(n);
+  const have = new Set(top.map((t) => t.symbol));
+  for (const s of extraSymbols()) if (!have.has(s)) top.push({ symbol: s, quoteVolume: 0, change: NaN, extra: true });
+  return top;
+}
+
+// ---------------------------------------------------------------------------
+// SCANNER
+let scan = null;       // { tf, htf, rows }
+let scanFilter = 'todos';
+
+async function runScan() {
+  const tf = $('#sc-tf').value;
+  const htf = HTF[tf];
+  const n = Number($('#sc-n').value);
+  $('#sc-run').disabled = true;
+  $('#detail').hidden = true;
+  progress('#tab-scanner', 0);
+  setOnThrottle((ms) => setStatus('#sc-status',`Aguardando o limite de requisições da Binance (${Math.ceil(ms / 1000)}s)…`));
+  try {
+    setStatus('#sc-status', 'Buscando as moedas de maior volume…');
+    const list = await symbolList(n);
+    let done = 0;
+    const res = await pool(list, 6, async (item) => {
+      const [cs, hcs] = await Promise.all([klines(item.symbol, tf, 999), klines(item.symbol, htf, 300)]);
+      if (cs.length < 120) throw new Error('histórico curto');
+      const a = analyze(cs, hcs, cfg);
+      done++;
+      progress('#tab-scanner', done / list.length);
+      setStatus('#sc-status', `Analisando… ${done}/${list.length}`);
+      return { ...item, cs, a };
+    });
+    const rows = [], failed = [];
+    res.forEach((r, k) => (r.ok ? rows.push(r.value) : failed.push(`${list[k].symbol} (${r.error.message})`)));
+    if (!rows.length) throw new Error(failed[0] || 'nenhum ativo analisado');
+    rows.forEach((r, k) => { r.rank = k; });
+    scan = { tf, htf, rows, at: Date.now() };
+    renderScan();
+    const nAct = rows.filter((r) => r.a.active).length;
+    setStatus('#sc-status', `${rows.length} ativos analisados às ${fmtDate(Date.now()).slice(9)} · ${nAct} com setup ativo` +
+      (failed.length ? ` · falharam: ${failed.join(', ')}` : ''));
+  } catch (e) {
+    setStatus('#sc-status', e.message, true);
+  } finally {
+    $('#sc-run').disabled = false;
+    progress('#tab-scanner', null);
+  }
+}
+
+function rowOrder(a, b) {
+  const sa = a.a.active, sb = b.a.active;
+  if (sa && !sb) return -1;
+  if (sb && !sa) return 1;
+  if (sa && sb) return sb.score - sa.score;
+  return a.rank - b.rank;
+}
+
+function trendCell(r) {
+  const arrow = (t) => (t === 'alta' ? '▲' : t === 'baixa' ? '▼' : '–');
+  const c = r.a.context;
+  return `<span class="trend-${c.tfTrend}">${scan.tf} ${arrow(c.tfTrend)}</span> · <span class="trend-${c.htfTrend}">${HTF_LABEL[scan.htf]} ${arrow(c.htfTrend)}</span>`;
+}
+
+function situation(r) {
+  const s = r.a.active, c = r.a.context;
+  if (!s) return rangeZone(c.rangePos).replace(/^na |^no /, '').replace(/^./, (x) => x.toUpperCase());
+  if (s.result.status === 'aberta') return `Em operação · ${fmtR(s.result.R)}`;
+  const dist = Math.abs((c.price - s.entry) / s.entry) * 100;
+  return `Ordem pendente · a ${fmtNum(dist, 1)}%`;
+}
+
+function renderScan() {
+  const rows = [...scan.rows].sort(rowOrder);
+  const counts = { todos: rows.length, long: 0, short: 0, aguardar: 0 };
+  for (const r of rows) counts[r.a.active ? r.a.active.side : 'aguardar']++;
+  for (const c of $$('#sc-results .chip')) {
+    const f = c.dataset.f;
+    c.innerHTML = `${{ todos: 'Todos', long: 'Compra', short: 'Venda', aguardar: 'Aguardar' }[f]}<span class="n">${counts[f]}</span>`;
+    c.setAttribute('aria-pressed', String(f === scanFilter));
+  }
+  const vis = rows.filter((r) => scanFilter === 'todos' || (r.a.active ? r.a.active.side : 'aguardar') === scanFilter);
+  $('#sc-body').innerHTML = vis.map((r) => {
+    const s = r.a.active, c = r.a.context;
+    const badge = s ? `<span class="badge ${s.side}">${sideLabel(s.side)}</span>${s.spring ? `<span class="tag">${s.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : ''}`
+      : '<span class="badge wait">AGUARDAR</span>';
+    return `<tr data-sym="${esc(r.symbol)}">
+      <td class="sym">${esc(r.symbol.replace(/USDT$/, ''))}<small>${Number.isFinite(r.change) ? fmtPct(r.change) : 'extra'}</small></td>
+      <td>${badge}</td>
+      <td>${esc(situation(r))}</td>
+      <td class="num">${fmtPrice(c.price)}</td>
+      <td class="num">${s ? fmtPrice(s.entry) : '—'}</td>
+      <td class="num">${s ? fmtPrice(s.stop) : '—'}</td>
+      <td class="num">${s ? fmtPrice(s.target) : '—'}</td>
+      <td class="num">${s ? fmtNum(s.rr, 1) : '—'}</td>
+      <td>${trendCell(r)}</td>
+      <td class="num">${fmtNum(c.rsi, 0)}</td>
+      <td class="num">${s ? s.score : '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="11" class="muted">Nenhum ativo neste filtro.</td></tr>';
+  $('#sc-empty').hidden = true;
+  $('#sc-results').hidden = false;
+}
+
+function showDetail(sym, setup = undefined) {
+  const r = scan.rows.find((x) => x.symbol === sym);
+  if (!r) return;
+  for (const tr of $$('#sc-body tr')) tr.classList.toggle('sel', tr.dataset.sym === sym);
+  const a = r.a, c = a.context;
+  const s = setup === undefined ? (a.active || a.recent[a.recent.length - 1] || null) : setup;
+  const htfName = HTF_LABEL[scan.htf];
+  $('#detail').hidden = false;
+  $('#dt-title').innerHTML = `${esc(sym)} <span class="badge ${a.active ? a.active.side : 'wait'}">${a.active ? sideLabel(a.active.side) : 'AGUARDAR'}</span>`;
+  $('#dt-sub').textContent = `${TF_LABEL[scan.tf]} · preço ${fmtPrice(c.price)} · último candle fechado em ${fmtDate(r.cs[r.cs.length - 1].T + 1)}`;
+  $('#dt-tv').href = `https://www.tradingview.com/chart/?symbol=BINANCE:${encodeURIComponent(sym)}.P`;
+
+  renderSymbolChart($('#dt-chart'), r.cs, s, a.structure);
+
+  const isActive = s && (s.result.status === 'pendente' || s.result.status === 'aberta');
+  if (s) {
+    const riskPct = Math.abs(s.entry - s.stop) / s.entry * 100;
+    $('#dt-plan').innerHTML = `
+      <span class="badge ${s.side}">${sideLabel(s.side)}</span> ${isActive ? '' : '<span class="muted">(setup já encerrado)</span>'}
+      <dl>
+        <dt>Situação</dt><dd>${esc(STATUS[s.result.status])}</dd>
+        <dt>Entrada</dt><dd>${fmtPrice(s.entry)}</dd>
+        <dt>Stop</dt><dd>${fmtPrice(s.stop)}</dd>
+        <dt>Alvo</dt><dd>${fmtPrice(s.target)}</dd>
+        <dt>R:R</dt><dd>${fmtNum(s.rr, 2)}</dd>
+        <dt>Risco até o stop</dt><dd>${fmtNum(riskPct, 2)}%</dd>
+        <dt>Alavancagem máx. sugerida</dt><dd>${Math.min(10, Math.max(1, Math.floor(50 / riskPct)))}×</dd>
+        <dt>Nota</dt><dd>${s.score}</dd>
+      </dl>
+      <p class="note">${describeStatus(s, r.cs, cfg)}</p>
+      <p class="note muted">A alavancagem sugerida (no máximo 10×) mantém a liquidação pelo menos 2× mais longe que o stop. O tamanho da posição sai do risco por operação, não da alavancagem.</p>`;
+    $('#dt-text').innerHTML = describeSetup(s, r.cs, scan.tf, htfName).map((p) => `<p>${p}</p>`).join('') +
+      (isActive ? '' : `<p class="muted">Não há setup ativo agora. Este é o último setup encontrado.</p>` + describeWait(c, scan.tf, htfName).map((p) => `<p>${p}</p>`).join(''));
+  } else {
+    $('#dt-plan').innerHTML = `<span class="badge wait">AGUARDAR</span>
+      <dl>
+        <dt>Topo (100 candles)</dt><dd>${fmtPrice(c.rangeHi)}</dd>
+        <dt>Fundo (100 candles)</dt><dd>${fmtPrice(c.rangeLo)}</dd>
+        <dt>Posição na faixa</dt><dd>${fmtNum(c.rangePos * 100, 0)}%</dd>
+        <dt>RSI</dt><dd>${fmtNum(c.rsi, 0)}</dd>
+      </dl>`;
+    $('#dt-text').innerHTML = describeWait(c, scan.tf, htfName).map((p) => `<p>${p}</p>`).join('');
+  }
+
+  const hist = [...a.recent].reverse();
+  $('#dt-hist').innerHTML = hist.map((h, k) => `<tr data-k="${k}" class="${h === s ? 'sel' : ''}">
+      <td>${fmtDate(r.cs[h.i].T + 1)}</td>
+      <td><span class="badge ${h.side}">${sideLabel(h.side)}</span></td>
+      <td class="num">${fmtPrice(h.entry)}</td><td class="num">${fmtPrice(h.stop)}</td><td class="num">${fmtPrice(h.target)}</td>
+      <td class="num">${fmtNum(h.rr, 1)}</td>
+      <td class="${h.result.R > 0 ? 'pos' : h.result.R < 0 ? 'neg' : ''}">${esc(STATUS[h.result.status])}${h.result.R != null ? ` (${fmtR(h.result.R)})` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="muted">Nenhum setup nos últimos 100 candles.</td></tr>';
+  $('#dt-hist').onclick = (ev) => {
+    const tr = ev.target.closest('tr[data-k]');
+    if (tr) showDetail(sym, hist[Number(tr.dataset.k)]);
+  };
+  $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------------------------------------------------------------------------
+// BACKTEST
+const dataCache = new Map();
+let bt = null;
+
+async function runBacktest() {
+  const tf = $('#bt-tf').value;
+  const htf = HTF[tf];
+  const months = Number($('#bt-months').value);
+  const n = Number($('#bt-n').value);
+  const blind = Number($('#bt-blind').value);
+  const now = Date.now();
+  const start = now - months * 30.44 * 864e5;
+  $('#bt-run').disabled = true;
+  $('#bt-detail').hidden = true;
+  progress('#tab-backtest', 0);
+  setOnThrottle((ms) => setStatus('#bt-status', `Aguardando o limite de requisições da Binance (${Math.ceil(ms / 1000)}s)…`));
+  try {
+    setStatus('#bt-status', 'Buscando as moedas de maior volume…');
+    const list = await symbolList(n);
+    let done = 0;
+    const res = await pool(list, 3, async (item) => {
+      const key = `${item.symbol}|${tf}|${months}`;
+      let data = dataCache.get(key);
+      if (!data) {
+        const cs = await klinesRange(item.symbol, tf, start - INTERVAL_MS[tf] * 300, now);
+        const hcs = await klinesRange(item.symbol, htf, start - INTERVAL_MS[htf] * 80, now);
+        data = { cs, hcs };
+        dataCache.set(key, data);
+      }
+      if (data.cs.length < 300) throw new Error('histórico curto');
+      const r = backtestSymbol(item.symbol, data.cs, data.hcs, cfg, start);
+      r.cs = data.cs;
+      done++;
+      progress('#tab-backtest', done / list.length);
+      setStatus('#bt-status', `Baixando e testando… ${done}/${list.length}`);
+      return r;
+    });
+    const ok = [], failed = [];
+    res.forEach((r, k) => (r.ok ? ok.push(r.value) : failed.push(`${list[k].symbol} (${r.error.message})`)));
+    if (!ok.length) throw new Error(failed[0] || 'nenhum ativo testado');
+    const cutT = start + (now - start) * (1 - blind);
+    bt = { tf, months, cutT, start, results: ok, summary: summarize(ok, cutT, cfg.riskPct) };
+    renderBacktest();
+    setStatus('#bt-status', `${ok.length} ativos testados · ${bt.summary.all.trades} operações` + (failed.length ? ` · falharam: ${failed.join(', ')}` : ''));
+  } catch (e) {
+    setStatus('#bt-status', e.message, true);
+  } finally {
+    $('#bt-run').disabled = false;
+    progress('#tab-backtest', null);
+  }
+}
+
+function card(title, m) {
+  const pf = m.profitFactor === Infinity ? '∞' : fmtNum(m.profitFactor, 2);
+  return `<div class="card"><h4>${title}</h4><dl>
+    <dt>Operações</dt><dd>${m.trades}</dd>
+    <dt>Acerto</dt><dd>${fmtNum(m.winRate * 100, 0)}%</dd>
+    <dt>R médio por operação</dt><dd class="${m.avgR > 0 ? 'pos' : m.avgR < 0 ? 'neg' : ''}">${fmtR(m.avgR)}</dd>
+    <dt>Total</dt><dd class="${m.totalR > 0 ? 'pos' : m.totalR < 0 ? 'neg' : ''}">${fmtR(m.totalR)}</dd>
+    <dt>Fator de lucro</dt><dd>${pf}</dd>
+    <dt>Retorno (risco ${fmtNum(cfg.riskPct, 1)}%/op.)</dt><dd class="${m.returnPct > 0 ? 'pos' : m.returnPct < 0 ? 'neg' : ''}">${fmtPct(m.returnPct)}</dd>
+    <dt>Pior queda</dt><dd>${fmtNum(m.maxDD * 100, 1)}% (${fmtNum(m.maxDDR, 1)}R)</dd>
+    <dt>Maior sequência de perdas</dt><dd>${m.maxLosingStreak}</dd>
+  </dl></div>`;
+}
+
+function renderBacktest() {
+  const s = bt.summary;
+  const crit = [
+    [s.all.trades >= 100, `Pelo menos 100 operações (${s.all.trades})`],
+    [s.all.avgR > 0.2, `R médio acima de +0,2R (${fmtR(s.all.avgR)})`],
+    [s.all.profitFactor > 1.3, `Fator de lucro acima de 1,3 (${s.all.profitFactor === Infinity ? '∞' : fmtNum(s.all.profitFactor, 2)})`],
+    [s.outSample.trades > 0 && s.outSample.avgR > 0, `Período cego positivo (${fmtR(s.outSample.avgR)} por operação)`],
+    [s.inSample.avgR <= 0 || s.outSample.avgR >= 0.5 * s.inSample.avgR, 'Período cego não muito pior que o de ajuste'],
+  ];
+  const allOk = crit.every((c) => c[0]);
+  $('#bt-verdict').innerHTML = `<b>${allOk ? 'Setup maduro para o teste em modo papel.' : 'Ainda não está maduro.'}</b>
+    <span class="muted"> ${TF_LABEL[bt.tf]} · ${bt.months} meses · cego a partir de ${fmtDate(bt.cutT, false)}</span>
+    <ul>${crit.map(([ok, t]) => `<li class="${ok ? 'ok' : 'no'}">${t}</li>`).join('')}</ul>`;
+  $('#bt-cards').innerHTML = card('Período de ajuste', s.inSample) + card('Período cego', s.outSample) + card('Total', s.all);
+  $('#bt-empty').hidden = true;
+  $('#bt-results').hidden = false; // o gráfico precisa da área visível para medir a largura
+  renderEquity($('#bt-equity'), s.trades, bt.cutT);
+
+  const bySym = [...s.bySymbol].sort((a, b) => b.totalR - a.totalR);
+  $('#bt-sym').innerHTML = bySym.map((m) => `<tr data-sym="${esc(m.symbol)}">
+      <td class="sym">${esc(m.symbol)}</td><td class="num">${m.trades}</td><td class="num">${fmtNum(m.winRate * 100, 0)}%</td>
+      <td class="num ${m.avgR > 0 ? 'pos' : m.avgR < 0 ? 'neg' : ''}">${fmtR(m.avgR)}</td>
+      <td class="num ${m.totalR > 0 ? 'pos' : m.totalR < 0 ? 'neg' : ''}">${fmtR(m.totalR)}</td>
+      <td class="num">${m.profitFactor === Infinity ? '∞' : fmtNum(m.profitFactor, 2)}</td>
+      <td class="num">${fmtNum(m.maxDDR, 1)}R</td></tr>`).join('');
+
+  const MAX = 400;
+  const trades = [...s.trades].reverse().slice(0, MAX);
+  $('#bt-trades-note').textContent = s.trades.length > MAX ? `(as ${MAX} mais recentes de ${s.trades.length})` : `(${s.trades.length})`;
+  $('#bt-trades').innerHTML = trades.map((t, k) => `<tr data-k="${k}">
+      <td>${fmtDate(t.exitT + 1)}</td><td class="sym">${esc(t.symbol.replace(/USDT$/, ''))}</td>
+      <td><span class="badge ${t.side}">${sideLabel(t.side)}</span>${t.spring ? `<span class="tag">${t.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : ''}</td>
+      <td class="num">${fmtPrice(t.entry)}</td><td class="num">${fmtPrice(t.exit)}</td><td class="num">${fmtNum(t.rr, 1)}</td>
+      <td class="num ${t.R > 0 ? 'pos' : 'neg'}">${fmtR(t.R)}</td>
+      <td class="muted">${t.setupT < bt.cutT ? 'ajuste' : 'cego'}</td></tr>`).join('') ||
+    '<tr><td colspan="8" class="muted">Nenhuma operação no período.</td></tr>';
+  $('#bt-trades').onclick = (ev) => {
+    const tr = ev.target.closest('tr[data-k]');
+    if (tr) showTrade(trades[Number(tr.dataset.k)]);
+  };
+}
+
+function showTrade(t) {
+  const r = bt.results.find((x) => x.symbol === t.symbol);
+  $('#bt-detail').hidden = false;
+  $('#btd-title').innerHTML = `${esc(t.symbol)} <span class="badge ${t.side}">${sideLabel(t.side)}</span> <span class="${t.R > 0 ? 'pos' : 'neg'}">${fmtR(t.R)}</span>`;
+  $('#btd-sub').textContent = `${TF_LABEL[bt.tf]} · entrada ${fmtDate(t.entryT)} · saída ${fmtDate(t.exitT + 1)} · ${STATUS[t.status]}`;
+  renderSymbolChart($('#btd-chart'), r.cs, t.setup, null);
+  $('#btd-text').innerHTML = describeSetup(t.setup, r.cs, bt.tf, HTF_LABEL[HTF[bt.tf]]).map((p) => `<p>${p}</p>`).join('');
+  $('#bt-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------------------------------------------------------------------------
+// CONFIGURAÇÕES
+function fillCfgForm() {
+  const f = $('#cfg');
+  for (const el of f.elements) if (el.name && el.name in cfg) el.value = cfg[el.name];
+}
+function readCfgForm() {
+  const f = $('#cfg');
+  for (const el of f.elements) {
+    if (!el.name) continue;
+    if (el.type === 'number') {
+      const v = Number(el.value);
+      if (Number.isFinite(v) && el.value !== '') cfg[el.name] = Math.min(Number(el.max), Math.max(Number(el.min), v));
+    } else {
+      cfg[el.name] = el.value;
+    }
+  }
+  saveCfg();
+  $('#cfg-saved').textContent = 'Salvo. Vale para a próxima análise ou backtest.';
+}
+
+// ---------------------------------------------------------------------------
+function init() {
+  if (!window.LightweightCharts) {
+    document.body.insertAdjacentHTML('afterbegin', '<p class="status error" style="padding:12px 24px">Não foi possível carregar a biblioteca de gráficos.</p>');
+  }
+  const tfOptions = TFS.map((t) => `<option value="${t}"${t === '4h' ? ' selected' : ''}>${TF_LABEL[t]}</option>`).join('');
+  $('#sc-tf').innerHTML = tfOptions;
+  $('#bt-tf').innerHTML = tfOptions;
+
+  for (const b of $$('.tabs button')) b.addEventListener('click', () => showTab(b.dataset.tab));
+  $('#sc-run').addEventListener('click', runScan);
+  $('#bt-run').addEventListener('click', runBacktest);
+  $('#sc-body').addEventListener('click', (ev) => {
+    const tr = ev.target.closest('tr[data-sym]');
+    if (tr) showDetail(tr.dataset.sym);
+  });
+  for (const c of $$('#sc-results .chip')) c.addEventListener('click', () => { scanFilter = c.dataset.f; renderScan(); });
+  $('#dt-close').addEventListener('click', () => { $('#detail').hidden = true; });
+  $('#btd-close').addEventListener('click', () => { $('#bt-detail').hidden = true; });
+  $('#bt-sym').addEventListener('click', (ev) => {
+    const tr = ev.target.closest('tr[data-sym]');
+    if (!tr || !bt) return;
+    const t = [...bt.summary.trades].reverse().find((x) => x.symbol === tr.dataset.sym);
+    if (t) showTrade(t);
+  });
+
+  fillCfgForm();
+  $('#cfg').addEventListener('change', readCfgForm);
+  $('#cfg').addEventListener('submit', (e) => e.preventDefault());
+  $('#cfg-reset').addEventListener('click', () => {
+    cfg = { ...CFG_DEFAULTS };
+    saveCfg();
+    fillCfgForm();
+    $('#cfg-saved').textContent = 'Padrão restaurado.';
+  });
+}
+
+init();

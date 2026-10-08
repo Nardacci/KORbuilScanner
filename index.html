@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KORbuild Scanner</title>
+  <meta name="description" content="Scanner de futuros perpétuos da Binance com setups SMC + Wyckoff e backtest.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101418'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' stroke='%2336c98e' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js"></script>
+  <script type="module" src="assets/js/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>KORbuild Scanner</h1>
+        <p class="sub">Futuros perpétuos USDT · Binance · SMC + Wyckoff</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="scanner" aria-selected="true">Scanner</button>
+      <button role="tab" data-tab="backtest" aria-selected="false">Backtest</button>
+      <button role="tab" data-tab="config" aria-selected="false">Configurações</button>
+      <button role="tab" data-tab="ajuda" aria-selected="false">Como funciona</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- SCANNER -->
+    <section id="tab-scanner" class="tab" role="tabpanel">
+      <div class="toolbar">
+        <label>Tempo gráfico
+          <select id="sc-tf"></select>
+        </label>
+        <label>Ativos
+          <select id="sc-n">
+            <option value="10">Top 10</option>
+            <option value="20">Top 20</option>
+            <option value="40" selected>Top 40</option>
+          </select>
+        </label>
+        <button id="sc-run" class="primary">Analisar agora</button>
+        <span id="sc-status" class="status" aria-live="polite"></span>
+      </div>
+      <div class="progress" hidden><div class="bar"></div></div>
+
+      <div id="sc-empty" class="empty">
+        <p>Clique em <b>Analisar agora</b>. O robô baixa os candles das moedas de maior volume da Binance,
+        procura os setups (varredura de liquidez → CHoCH → order block) e lista as oportunidades.</p>
+        <p class="muted">O candle em formação não entra na análise: os sinais usam só candles fechados.</p>
+      </div>
+
+      <div id="sc-results" hidden>
+        <div class="chips" role="group" aria-label="Filtro">
+          <button class="chip" data-f="todos" aria-pressed="true">Todos</button>
+          <button class="chip" data-f="long" aria-pressed="false">Compra</button>
+          <button class="chip" data-f="short" aria-pressed="false">Venda</button>
+          <button class="chip" data-f="aguardar" aria-pressed="false">Aguardar</button>
+        </div>
+        <div class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>Ativo</th><th>Sinal</th><th>Situação</th><th class="num">Preço</th>
+                <th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th>
+                <th class="num">R:R</th><th>Tendência</th><th class="num">RSI</th><th class="num">Nota</th>
+              </tr>
+            </thead>
+            <tbody id="sc-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <article id="detail" class="detail" hidden>
+        <header class="detail-head">
+          <div>
+            <h2 id="dt-title"></h2>
+            <p id="dt-sub" class="muted"></p>
+          </div>
+          <div class="detail-actions">
+            <a id="dt-tv" target="_blank" rel="noopener">Abrir no TradingView ↗</a>
+            <button id="dt-close" class="ghost" aria-label="Fechar detalhe">✕</button>
+          </div>
+        </header>
+        <div id="dt-chart" class="chart"></div>
+        <div class="detail-body">
+          <div id="dt-plan" class="plan"></div>
+          <div id="dt-text" class="text"></div>
+        </div>
+        <h3>Setups recentes deste ativo</h3>
+        <div class="table-wrap">
+          <table class="grid small">
+            <thead><tr><th>Data</th><th>Lado</th><th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th><th class="num">R:R</th><th>Resultado</th></tr></thead>
+            <tbody id="dt-hist"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- BACKTEST -->
+    <section id="tab-backtest" class="tab" role="tabpanel" hidden>
+      <div class="toolbar">
+        <label>Tempo gráfico
+          <select id="bt-tf"></select>
+        </label>
+        <label>Período
+          <select id="bt-months">
+            <option value="6">6 meses</option>
+            <option value="12">1 ano</option>
+            <option value="24" selected>2 anos</option>
+            <option value="36">3 anos</option>
+          </select>
+        </label>
+        <label>Ativos
+          <select id="bt-n">
+            <option value="10">Top 10</option>
+            <option value="20" selected>Top 20</option>
+            <option value="40">Top 40</option>
+          </select>
+        </label>
+        <label>Período cego
+          <select id="bt-blind">
+            <option value="0.2">últimos 20%</option>
+            <option value="0.3" selected>últimos 30%</option>
+            <option value="0.4">últimos 40%</option>
+          </select>
+        </label>
+        <button id="bt-run" class="primary">Rodar backtest</button>
+        <span id="bt-status" class="status" aria-live="polite"></span>
+      </div>
+      <div class="progress" hidden><div class="bar"></div></div>
+
+      <div id="bt-empty" class="empty">
+        <p>O backtest roda as mesmas regras do scanner no histórico e mostra como teriam se saído.</p>
+        <p class="muted">Ajuste as regras no <b>período de ajuste</b>. O <b>período cego</b> (o final do histórico)
+        serve para conferir se o resultado se mantém em dados que não foram usados para calibrar.
+        Os dados baixados ficam guardados enquanto a página estiver aberta: mudar as regras e rodar de novo é rápido.</p>
+      </div>
+
+      <div id="bt-results" hidden>
+        <div id="bt-verdict" class="verdict"></div>
+        <div class="cards" id="bt-cards"></div>
+        <h3>Resultado acumulado (em R)</h3>
+        <div id="bt-equity" class="chart short"></div>
+        <h3>Por ativo</h3>
+        <div class="table-wrap">
+          <table class="grid small">
+            <thead><tr><th>Ativo</th><th class="num">Operações</th><th class="num">Acerto</th><th class="num">R médio</th><th class="num">Total</th><th class="num">Fator de lucro</th><th class="num">Pior queda</th></tr></thead>
+            <tbody id="bt-sym"></tbody>
+          </table>
+        </div>
+        <h3>Operações <span class="muted" id="bt-trades-note"></span></h3>
+        <div class="table-wrap tall">
+          <table class="grid small">
+            <thead><tr><th>Saída</th><th>Ativo</th><th>Lado</th><th class="num">Entrada</th><th class="num">Saída</th><th class="num">R:R</th><th class="num">Resultado</th><th>Período</th></tr></thead>
+            <tbody id="bt-trades"></tbody>
+          </table>
+        </div>
+        <article id="bt-detail" class="detail" hidden>
+          <header class="detail-head">
+            <div><h2 id="btd-title"></h2><p id="btd-sub" class="muted"></p></div>
+            <div class="detail-actions"><button id="btd-close" class="ghost" aria-label="Fechar">✕</button></div>
+          </header>
+          <div id="btd-chart" class="chart"></div>
+          <div id="btd-text" class="text"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section id="tab-config" class="tab" role="tabpanel" hidden>
+      <form id="cfg" class="cfg">
+        <fieldset>
+          <legend>Detecção</legend>
+          <label>Força do topo/fundo <small>candles de cada lado para confirmar um topo ou fundo</small>
+            <input type="number" name="pivot" min="2" max="8" step="1"></label>
+          <label>Candles para voltar após a varredura
+            <input type="number" name="reclaimBars" min="1" max="10" step="1"></label>
+          <label>Janela até o CHoCH <small>candles máximos entre a varredura e o CHoCH</small>
+            <input type="number" name="chochWindow" min="5" max="100" step="1"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Operação</legend>
+          <label>R:R mínimo <input type="number" name="minRR" min="1" max="6" step="0.1"></label>
+          <label>Validade da ordem <small>candles para a ordem limite executar</small>
+            <input type="number" name="expiry" min="3" max="200" step="1"></label>
+          <label>Tempo máximo na operação <small>em candles</small>
+            <input type="number" name="maxBarsInTrade" min="10" max="1000" step="1"></label>
+          <label>Filtro do tempo gráfico maior
+            <select name="htfFilter">
+              <option value="off">Desligado</option>
+              <option value="nao-contra">Não operar contra a tendência maior</option>
+              <option value="a-favor">Só a favor da tendência maior</option>
+            </select></label>
+        </fieldset>
+        <fieldset>
+          <legend>Custos e risco (backtest)</legend>
+          <label>Taxa por lado (%) <input type="number" name="feePct" min="0" max="1" step="0.01"></label>
+          <label>Risco por operação (%) <small>para calcular o retorno do patrimônio</small>
+            <input type="number" name="riskPct" min="0.1" max="10" step="0.1"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Ativos extras</legend>
+          <label>Sempre incluir <small>separados por vírgula, ex.: MEUSDT, WIFUSDT</small>
+            <input type="text" name="extra" autocomplete="off" spellcheck="false"></label>
+        </fieldset>
+        <div class="cfg-actions">
+          <button type="button" id="cfg-reset" class="ghost">Restaurar padrão</button>
+          <span id="cfg-saved" class="muted" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- AJUDA -->
+    <section id="tab-ajuda" class="tab prose" role="tabpanel" hidden>
+      <h2>O que o robô procura</h2>
+      <p>Para uma <b>compra</b> (a venda é o espelho):</p>
+      <ol>
+        <li><b>Varredura de liquidez:</b> o preço perde um fundo anterior, onde ficam os stops, e em poucos candles fecha de volta acima dele.</li>
+        <li><b>CHoCH:</b> depois disso, fecha acima do último topo da perna de queda, sem fazer mínima abaixo da varredura.</li>
+        <li><b>Order block:</b> o último candle de baixa antes do impulso. A entrada é uma ordem limite no topo do corpo dele.</li>
+        <li><b>Stop</b> logo abaixo da mínima da varredura. <b>Alvo</b> na próxima liquidez acima (um topo que ainda não foi rompido), desde que dê pelo menos o R:R mínimo.</li>
+      </ol>
+      <p><b>Wyckoff:</b> quando o fundo varrido é o fundo de uma faixa lateral, o setup recebe a marca <b>Spring</b> (ou <b>Upthrust</b> na venda) e nota maior.
+      Volume alto na varredura e operação a favor do tempo gráfico maior também somam pontos.</p>
+      <h2>Tempo gráfico maior</h2>
+      <p>Cada tempo gráfico usa um maior como contexto (4h → diário, 1h → 4h, diário → semanal...).
+      A tendência dele é medida pela média exponencial de 50 períodos: preço acima da média subindo = alta; abaixo dela caindo = baixa; o resto = lateral.</p>
+      <h2>Como o backtest conta</h2>
+      <ul>
+        <li>Só usa o que já era conhecido no fechamento de cada candle: não olha o futuro.</li>
+        <li>Uma operação por ativo por vez. A ordem expira se não executar dentro da validade.</li>
+        <li>Se o preço vai ao alvo antes de executar, a operação é descartada (não conta).</li>
+        <li>Se stop e alvo são tocados no mesmo candle, conta como <b>stop</b>.</li>
+        <li>Resultado em <b>R</b> (múltiplos do risco), já descontando a taxa de entrada e de saída.</li>
+      </ul>
+      <h2>Critérios para considerar o setup maduro</h2>
+      <ul>
+        <li>Pelo menos 100 operações no total.</li>
+        <li>R médio acima de +0,2R e fator de lucro acima de 1,3.</li>
+        <li>Período cego positivo e não muito pior que o período de ajuste.</li>
+      </ul>
+      <p class="warn-box">Ferramenta de estudo. Não é recomendação de investimento. Resultados passados não garantem resultados futuros, e futuros alavancados podem perder mais rápido do que parece.</p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Ferramenta de estudo, não é recomendação de investimento. Dados públicos da Binance, buscados direto do seu navegador.</p>
+    <p>Gráficos: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>, Copyright (c) 2023 TradingView, Inc.</p>
+  </footer>
+</body>
+</html>
