@@ -14,6 +14,7 @@ Tudo roda no navegador: a página busca os dados públicos da Binance direto do 
 | --- | --- |
 | **Scanner** | Botão *Analisar agora*: baixa os candles das 10, 20 ou 40 moedas de maior volume (mais as extras das configurações), roda o motor e lista os ativos com **COMPRA**, **VENDA** ou **AGUARDAR**, com entrada, stop, alvo e R:R. Clicar num ativo abre o gráfico com as marcações e a explicação. Tempo gráfico escolhível (padrão **4 horas**). |
 | **Backtest** | Roda as mesmas regras no histórico (6 meses a 3 anos), separa o **período de ajuste** do **período cego** e mostra acerto, R médio, fator de lucro, pior queda, curva acumulada, resultado por ativo e cada operação no gráfico. |
+| **Detalhe do ativo** | Além do gráfico e do plano, roda o **backtest do setup só naquele ativo** (1 a 3 anos): quantas operações, quantas lucrativas, compras x vendas, e cada operação clicável no gráfico. |
 | **Configurações** | Parâmetros do setup (força dos topos/fundos, R:R mínimo, validade da ordem, filtro do tempo maior, taxas, risco por operação) e ativos extras. Ficam salvos no navegador. |
 | **Como funciona** | As regras explicadas em português. |
 
@@ -27,6 +28,10 @@ Tudo roda no navegador: a página busca os dados públicos da Binance direto do 
 Marcas extras que aumentam a nota: **Spring/Upthrust** (o nível varrido é o extremo de uma faixa lateral,
 como no Wyckoff), volume alto na varredura e operação a favor do tempo gráfico maior
 (4h → diário, 1h → 4h, diário → semanal...).
+
+Refinamentos opcionais (Configurações), comparáveis no backtest com o botão *Comparar as melhorias*:
+entrada no meio do order block quando ele é grande, cancelar a ordem se o preço andar X R a favor sem executar,
+sair no BOS contra a posição e nota mínima do setup.
 
 O motor processa candle a candle e só usa o que já era conhecido no fechamento de cada candle,
 então o backtest não olha o futuro (há teste automático para isso).

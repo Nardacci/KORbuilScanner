@@ -29,6 +29,8 @@ export const STATUS = {
   tempo: 'Saída por tempo',
   expirada: 'Expirou sem executar',
   perdida: 'Foi ao alvo sem executar',
+  cancelada: 'Cancelada (andou demais sem executar)',
+  bos: 'Saída no BOS contra',
 };
 
 export function rangeZone(pos) {
@@ -50,7 +52,8 @@ export function describeSetup(s, cs, tf, htfName) {
   L.push(`<b>2. CHoCH:</b> em ${fmtDate(cs[s.i].t)} fechou ${long ? 'acima do último topo' : 'abaixo do último fundo'} (${fmtPrice(s.chochLevel)}), ` +
     `mudando o caráter do movimento para ${long ? 'alta' : 'baixa'}.`);
   L.push(`<b>3. Order block:</b> o último candle ${long ? 'de baixa' : 'de alta'} antes do impulso fica entre ` +
-    `${fmtPrice(Math.min(s.obProx, s.obDist))} e ${fmtPrice(Math.max(s.obProx, s.obDist))}.`);
+    `${fmtPrice(Math.min(s.obProx, s.obDist))} e ${fmtPrice(Math.max(s.obProx, s.obDist))}` +
+    (s.entryMode === 'meio' ? '. Como o bloco é grande, a entrada fica no <b>meio</b> dele.' : '.'));
   const riskPct = (Math.abs(s.entry - s.stop) / s.entry) * 100;
   const rewPct = (Math.abs(s.target - s.entry) / s.entry) * 100;
   L.push(`<b>4. Plano:</b> ${long ? 'compra' : 'venda'} limitada em <b>${fmtPrice(s.entry)}</b>, stop em <b>${fmtPrice(s.stop)}</b> ` +

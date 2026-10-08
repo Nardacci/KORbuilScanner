@@ -84,15 +84,29 @@
             <button id="dt-close" class="ghost" aria-label="Fechar detalhe">✕</button>
           </div>
         </header>
+        <p id="dt-chart-note" class="chart-note" hidden><span></span> <button id="dt-chart-back" class="ghost">Voltar ao sinal atual</button></p>
         <div id="dt-chart" class="chart"></div>
         <div class="detail-body">
           <div id="dt-plan" class="plan"></div>
           <div id="dt-text" class="text"></div>
         </div>
+        <section class="asset-bt">
+          <div class="compare-head">
+            <h3 id="dt-bt-title">Este setup no histórico do ativo</h3>
+            <label class="inline">Período
+              <select id="dt-bt-months">
+                <option value="12">1 ano</option>
+                <option value="24" selected>2 anos</option>
+                <option value="36">3 anos</option>
+              </select>
+            </label>
+          </div>
+          <div id="dt-bt" class="muted">—</div>
+        </section>
         <h3>Setups recentes deste ativo</h3>
         <div class="table-wrap">
           <table class="grid small">
-            <thead><tr><th>Data</th><th>Lado</th><th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th><th class="num">R:R</th><th>Resultado</th></tr></thead>
+            <thead><tr><th>Candle do sinal</th><th>Lado</th><th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th><th class="num">R:R</th><th>Resultado</th></tr></thead>
             <tbody id="dt-hist"></tbody>
           </table>
         </div>
@@ -118,7 +132,11 @@
             <option value="10">Top 10</option>
             <option value="20" selected>Top 20</option>
             <option value="40">Top 40</option>
+            <option value="custom">Escolher…</option>
           </select>
+        </label>
+        <label id="bt-custom-wrap" hidden>Quais ativos
+          <input id="bt-custom" type="text" placeholder="FILUSDT, MEUSDT" autocomplete="off" spellcheck="false">
         </label>
         <label>Período cego
           <select id="bt-blind">
@@ -142,6 +160,17 @@
       <div id="bt-results" hidden>
         <div id="bt-verdict" class="verdict"></div>
         <div class="cards" id="bt-cards"></div>
+        <div class="compare-head">
+          <h3>Comparar opções</h3>
+          <button id="bt-compare" class="ghost">Comparar as melhorias</button>
+        </div>
+        <p class="muted small-note">Roda de novo, com os mesmos dados, ligando uma melhoria de cada vez (e todas juntas), para ver qual ajuda de verdade.</p>
+        <div class="table-wrap" id="bt-compare-wrap" hidden>
+          <table class="grid small">
+            <thead><tr><th>Variação</th><th class="num">Operações</th><th class="num">Acerto</th><th class="num">R médio</th><th class="num">Total</th><th class="num">Fator de lucro</th><th class="num">R médio no cego</th><th class="num">Pior sequência</th></tr></thead>
+            <tbody id="bt-compare-body"></tbody>
+          </table>
+        </div>
         <h3>Resultado acumulado (em R)</h3>
         <div id="bt-equity" class="chart short"></div>
         <h3>Por ativo</h3>
@@ -154,7 +183,7 @@
         <h3>Operações <span class="muted" id="bt-trades-note"></span></h3>
         <div class="table-wrap tall">
           <table class="grid small">
-            <thead><tr><th>Saída</th><th>Ativo</th><th>Lado</th><th class="num">Entrada</th><th class="num">Saída</th><th class="num">R:R</th><th class="num">Resultado</th><th>Período</th></tr></thead>
+            <thead><tr><th>Candle da saída</th><th>Ativo</th><th>Lado</th><th class="num">Entrada</th><th class="num">Saída</th><th class="num">R:R</th><th class="num">Resultado</th><th>Período</th></tr></thead>
             <tbody id="bt-trades"></tbody>
           </table>
         </div>
@@ -194,6 +223,24 @@
               <option value="nao-contra">Não operar contra a tendência maior</option>
               <option value="a-favor">Só a favor da tendência maior</option>
             </select></label>
+        </fieldset>
+        <fieldset>
+          <legend>Refinamentos (compare no backtest)</legend>
+          <label>Entrada no order block
+            <select name="obEntry">
+              <option value="topo">Topo do corpo</option>
+              <option value="auto">Meio, quando o bloco for grande</option>
+              <option value="meio">Sempre no meio</option>
+            </select></label>
+          <label>Cancelar a ordem se andar a favor sem executar <small>em R; 0 = desligado</small>
+            <input type="number" name="cancelAfterR" min="0" max="10" step="0.5"></label>
+          <label>Sair no BOS contra a posição <small>fecha a operação se a estrutura romper contra</small>
+            <select name="exitOnBOS">
+              <option value="nao">Não</option>
+              <option value="sim">Sim</option>
+            </select></label>
+          <label>Nota mínima do setup <small>0 = mostra todos</small>
+            <input type="number" name="minScore" min="0" max="100" step="1"></label>
         </fieldset>
         <fieldset>
           <legend>Custos e risco (backtest)</legend>
@@ -236,6 +283,18 @@
         <li>Se stop e alvo são tocados no mesmo candle, conta como <b>stop</b>.</li>
         <li>Resultado em <b>R</b> (múltiplos do risco), já descontando a taxa de entrada e de saída.</li>
       </ul>
+      <h2>Refinamentos (Configurações)</h2>
+      <ul>
+        <li><b>Entrada no meio do order block:</b> quando o bloco é grande, entrar no topo deixa o stop longe demais.</li>
+        <li><b>Cancelar se andar a favor sem executar:</b> evita entrar depois que o movimento já aconteceu e voltou.</li>
+        <li><b>Sair no BOS contra:</b> fecha a operação se o preço perder (no fechamento) o último fundo formado depois da varredura, sem esperar o stop.</li>
+        <li><b>Nota mínima:</b> esconde os setups fracos.</li>
+      </ul>
+      <p>No backtest, o botão <b>Comparar as melhorias</b> roda cada uma separada e todas juntas, com os mesmos dados.</p>
+      <h2>Histórico do setup em um ativo</h2>
+      <p>Ao abrir um ativo no scanner, a página roda o backtest só dele (1 a 3 anos) e mostra quantas vezes o setup deu lucro, separando compras e vendas.
+      Com menos de 20 operações a amostra é pequena: compare sempre com o backtest geral.</p>
+      <p>Os horários mostrados são os de <b>abertura do candle</b>, como no TradingView.</p>
       <h2>Critérios para considerar o setup maduro</h2>
       <ul>
         <li>Pelo menos 100 operações no total.</li>

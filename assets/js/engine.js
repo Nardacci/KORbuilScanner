@@ -34,6 +34,12 @@ export const DEFAULTS = {
   rangeLookback: 60,   // candles usados para medir a faixa lateral
   rangeMaxAtr: 14,     // largura máxima da faixa, em ATRs, para chamar de lateral
   volClimax: 1.8,      // volume na varredura acima de X vezes a média
+  // Opções para testar no backtest:
+  obEntry: 'topo',     // 'topo' do corpo do OB | 'auto' (meio se o OB for grande) | 'meio'
+  obMaxAtr: 1.5,       // no modo 'auto', OB maior que isso (em ATRs) usa o meio
+  cancelAfterR: 0,     // cancela a ordem se o preço andar X R a favor sem executar (0 = desligado)
+  exitOnBOS: false,    // sai no fechamento se a estrutura romper contra a posição
+  minScore: 0,         // ignora setups com nota menor
 };
 
 // Tempo gráfico maior usado como contexto para cada tempo gráfico.
@@ -163,8 +169,11 @@ function buildLong(cs, o, ind, S, j, highs) {
   }
   if (ob < 0) ob = m;
   const obC = cs[ob];
-  const entry = Math.max(obC.o, obC.c);
   const a = ind.atr[j];
+  const top = Math.max(obC.o, obC.c);
+  const big = top - obC.l > o.obMaxAtr * a;
+  const useMid = o.obEntry === 'meio' || (o.obEntry === 'auto' && big);
+  const entry = useMid ? (top + obC.l) / 2 : top;
   const stop = S.low - 0.1 * a;
   const risk = entry - stop;
   if (!(risk > 0) || entry >= cs[j].c) return null;
@@ -200,7 +209,7 @@ function buildLong(cs, o, ind, S, j, highs) {
     sweepIdx: S.start, sweepLevel: S.level, sweepPivotIdx: S.pivotIdx, sweepLow: S.low, sweepLowIdx: S.lowIdx,
     reclaimIdx: S.reclaimIdx,
     chochLevel: S.chochLevel, chochFrom: S.chochFrom,
-    obIdx: ob, obProx: entry, obDist: obC.l,
+    obIdx: ob, obProx: top, obDist: obC.l, entryMode: useMid ? 'meio' : 'topo',
     targetIdx,
     spring, range: inRange ? { from: r0, to: S.start - 1, hi: rH, lo: rL } : null,
     volRatio,
@@ -215,6 +224,13 @@ function buildLong(cs, o, ind, S, j, highs) {
 export function simulate(cs, st, o) {
   const { entry, stop, target } = st;
   const risk = entry - stop;
+  const k0 = o.pivot;
+  // Último fundo confirmado depois da varredura: perder ele (no fechamento) é o BOS contra a compra.
+  let lastLow = null;
+  const notePivot = (p) => {
+    if (p > st.sweepLowIdx && isPivotLow(cs, p, k0)) lastLow = cs[p].l;
+  };
+  if (o.exitOnBOS) for (let p = st.sweepLowIdx + 1; p <= st.i - k0; p++) notePivot(p);
   const res = { status: 'pendente', fillIdx: -1, exitIdx: -1, exitPrice: null, R: null, endIdx: cs.length - 1 };
   const feeR = (exit) => ((o.feePct / 100) * (Math.abs(entry) + Math.abs(exit))) / risk;
   const close = (k, price, status) => {
@@ -223,6 +239,7 @@ export function simulate(cs, st, o) {
   };
   for (let k = st.i + 1; k < cs.length; k++) {
     const c = cs[k];
+    if (o.exitOnBOS) notePivot(k - k0);
     if (res.fillIdx < 0) {
       if (k - st.i > o.expiry) { res.status = 'expirada'; res.endIdx = k; return res; }
       if (c.l <= entry) {
@@ -230,10 +247,13 @@ export function simulate(cs, st, o) {
         if (c.l <= stop) { close(k, Math.min(stop, c.o), 'perda'); return res; }
       } else if (c.h >= target) {
         res.status = 'perdida'; res.endIdx = k; return res; // alvo sem entrada
+      } else if (o.cancelAfterR > 0 && c.h >= entry + o.cancelAfterR * risk) {
+        res.status = 'cancelada'; res.endIdx = k; return res; // andou demais sem executar
       }
     } else {
       if (c.l <= stop) { close(k, Math.min(stop, c.o), 'perda'); return res; }
       if (c.h >= target) { close(k, Math.max(target, c.o), 'ganho'); return res; }
+      if (o.exitOnBOS && lastLow !== null && c.c < lastLow) { close(k, c.c, 'bos'); return res; }
       if (k - res.fillIdx >= o.maxBarsInTrade) { close(k, c.c, 'tempo'); return res; }
     }
   }
@@ -263,7 +283,9 @@ export function detectSetups(cs, opts = {}, htfTrendAt = null) {
       if (o.htfFilter === 'nao-contra' && against) continue;
       if (o.htfFilter === 'a-favor' && !aligned) continue;
       st.result = simulate(s, st, o);
-      out.push(toReal(st, side, htf, aligned));
+      const r = toReal(st, side, htf, aligned);
+      if (r.score < o.minScore) continue;
+      out.push(r);
     }
   }
   return out.sort((a, b) => a.i - b.i || (a.side < b.side ? -1 : 1));
