@@ -96,6 +96,12 @@ export async function klinesRange(symbol, interval, startTime, endTime = Date.no
   return out.filter((c) => c.T < now && c.t <= endTime);
 }
 
+// Último preço negociado de todos os contratos (peso 2, leve para atualizar sempre).
+export async function livePrices() {
+  const rows = await get('/fapi/v1/ticker/price', {}, 2);
+  return new Map(rows.map((r) => [r.symbol, +r.price]));
+}
+
 // Executa tarefas com no máximo `limit` ao mesmo tempo.
 export async function pool(items, limit, fn) {
   const results = new Array(items.length);

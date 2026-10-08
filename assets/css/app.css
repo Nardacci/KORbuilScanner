@@ -77,6 +77,11 @@ button { font: inherit; cursor: pointer; }
 .ghost:hover { color: var(--text-1); border-color: var(--text-3); }
 .status { color: var(--text-2); font-size: 13px; align-self: center; }
 .status.error { color: var(--down); }
+.status.live { font-size: 12px; color: var(--text-3); }
+.status.live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 6px; vertical-align: 1px; }
+label.check { display: flex; flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); align-self: center; cursor: pointer; }
+label.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+td.touch { color: var(--warn); font-weight: 600; }
 
 .progress { height: 3px; background: var(--surface-2); border-radius: 2px; overflow: hidden; margin: -6px 0 14px; }
 .progress .bar { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
