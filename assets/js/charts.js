@@ -71,7 +71,7 @@ export function renderSymbolChart(el, cs, setup, struct) {
     markers.push({ time: sec(cs[setup.i].t), position: long ? 'aboveBar' : 'belowBar', color: css('--accent'), shape: 'circle', text: 'CHoCH' });
     const r = setup.result;
     if (r.fillIdx >= 0) markers.push({ time: sec(cs[r.fillIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--text-1'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Entrada' });
-    if (r.exitIdx >= 0) markers.push({ time: sec(cs[r.exitIdx].t), position: 'inBar', color: r.R > 0 ? up : down, shape: 'circle', text: r.status === 'ganho' ? 'Alvo' : r.status === 'perda' ? 'Stop' : 'Saída' });
+    if (r.exitIdx >= 0) markers.push({ time: sec(cs[r.exitIdx].t), position: 'inBar', color: r.R > 0 ? up : down, shape: 'circle', text: r.status === 'ganho' ? 'Alvo' : r.status === 'perda' ? 'Stop' : r.status === 'bos' ? 'Saída BOS' : 'Saída' });
 
     line(setup.entry, css('--accent'), `Entrada ${fmtPrice(setup.entry)}`, LS.Solid, 2);
     line(setup.stop, down, 'Stop', LS.Solid, 2);

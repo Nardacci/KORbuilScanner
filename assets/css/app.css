@@ -148,6 +148,16 @@ table.grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabul
 .verdict li.ok::marker { content: "✓  "; color: var(--up); }
 .verdict li.no::marker { content: "✗  "; color: var(--down); }
 
+.chart-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; padding: 8px 12px;
+  border-radius: 8px; background: rgba(240, 185, 11, .08); border-left: 3px solid var(--warn); font-size: 13px; color: var(--text-2); }
+.compare-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 8px; }
+.compare-head h3 { margin: 0; }
+.small-note { font-size: 13px; margin: 0 0 10px; }
+label.inline { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); }
+.asset-bt .cards { margin-bottom: 10px; }
+.asset-bt .note { font-size: 13px; color: var(--text-2); margin: 8px 0 0; }
+.grid tr.best td:first-child { box-shadow: inset 3px 0 0 var(--up); }
+
 /* Configurações */
 .cfg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 980px; }
 .cfg fieldset { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px 16px; background: var(--surface); margin: 0; }

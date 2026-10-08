@@ -99,3 +99,45 @@ test('backtest e análise rodam de ponta a ponta', () => {
   const a = analyze(cs.slice(0, 1000), [], { htfFilter: 'off' });
   assert.ok(a.context.rangePos >= 0 && a.context.rangePos <= 1);
 });
+
+const ALL_ON = { htfFilter: 'off', obEntry: 'auto', cancelAfterR: 2, exitOnBOS: true, minScore: 40 };
+
+test('opções novas também não olham o futuro', () => {
+  const cs = synthetic(2500, 21);
+  const full = detectSetups(cs, ALL_ON);
+  const st = (s) => key(s) + '|' + s.result.status;
+  for (const m of [900, 1700]) {
+    const cut = detectSetups(cs.slice(0, m), ALL_ON);
+    // setups e resultados já encerrados antes do corte devem ser idênticos
+    const done = (s) => s.result.endIdx < m - 1;
+    assert.deepEqual(cut.filter(done).map(st), full.filter((s) => s.i < m && done(s)).map(st), `corte em ${m}`);
+  }
+});
+
+test('entrada no meio do OB fica dentro do bloco e nota mínima filtra', () => {
+  const cs = synthetic(3000, 4);
+  for (const s of detectSetups(cs, { htfFilter: 'off', obEntry: 'meio' })) {
+    const lo = Math.min(s.obProx, s.obDist), hi = Math.max(s.obProx, s.obDist);
+    assert.ok(s.entry >= lo - 1e-9 && s.entry <= hi + 1e-9);
+    assert.equal(s.entryMode, 'meio');
+  }
+  assert.ok(detectSetups(cs, { htfFilter: 'off', minScore: 45 }).every((s) => s.score >= 45));
+});
+
+test('cancelamento e saída no BOS aparecem e são contabilizados', () => {
+  let cancel = 0, bos = 0;
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
+    const cs = synthetic(3000, seed);
+    for (const s of detectSetups(cs, { htfFilter: 'off', cancelAfterR: 1, exitOnBOS: true })) {
+      if (s.result.status === 'cancelada') cancel++;
+      if (s.result.status === 'bos') {
+        bos++;
+        assert.ok(s.result.R > -1.2, 'saída no BOS não pode perder mais que o stop');
+      }
+    }
+  }
+  assert.ok(cancel > 0 && bos > 0, `cancel=${cancel} bos=${bos}`);
+  const cs = synthetic(3000, 2);
+  const b = backtestSymbol('X', cs, [], { htfFilter: 'off', cancelAfterR: 1 });
+  assert.ok(b.cancelled > 0);
+});

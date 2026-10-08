@@ -3,7 +3,7 @@
 
 import { DEFAULTS, detectSetups, makeHtfTrend } from './engine.js';
 
-const CLOSED = new Set(['ganho', 'perda', 'tempo']);
+const CLOSED = new Set(['ganho', 'perda', 'tempo', 'bos']);
 
 // Operações de um ativo. `startT` descarta setups antes do início pedido
 // (os candles anteriores servem só de aquecimento).
@@ -12,7 +12,7 @@ export function backtestSymbol(symbol, cs, htf, opts = {}, startT = 0) {
   const setups = detectSetups(cs, o, makeHtfTrend(htf));
   const trades = [];
   let busyUntil = -1;
-  let skipped = 0, expired = 0, missed = 0;
+  let skipped = 0, expired = 0, missed = 0, cancelled = 0;
   for (const s of setups) {
     if (cs[s.i].T < startT) continue;
     if (s.i <= busyUntil) { skipped++; continue; }
@@ -20,17 +20,18 @@ export function backtestSymbol(symbol, cs, htf, opts = {}, startT = 0) {
     busyUntil = r.endIdx;
     if (r.status === 'expirada') { expired++; continue; }
     if (r.status === 'perdida') { missed++; continue; }
+    if (r.status === 'cancelada') { cancelled++; continue; }
     if (!CLOSED.has(r.status)) continue; // ainda aberta ou pendente no fim dos dados
     trades.push({
       symbol, side: s.side,
-      setupT: cs[s.i].T, entryT: cs[r.fillIdx].t, exitT: cs[r.exitIdx].T,
+      setupT: cs[s.i].T, entryT: cs[r.fillIdx].t, exitT: cs[r.exitIdx].T, exitCandleT: cs[r.exitIdx].t,
       entry: s.entry, stop: s.stop, target: s.target, exit: r.exitPrice,
       rr: s.rr, R: r.R, status: r.status,
       spring: s.spring, aligned: s.aligned, score: s.score,
       setup: s,
     });
   }
-  return { symbol, trades, setups: setups.length, skipped, expired, missed };
+  return { symbol, trades, setups: setups.length, skipped, expired, missed, cancelled };
 }
 
 export function metrics(trades, riskPct = 1) {
