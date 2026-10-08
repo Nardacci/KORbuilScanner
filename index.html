@@ -42,7 +42,9 @@
           </select>
         </label>
         <button id="sc-run" class="primary">Analisar agora</button>
+        <label class="check"><input type="checkbox" id="sc-auto" checked> Reanalisar sozinho quando o candle fechar</label>
         <span id="sc-status" class="status" aria-live="polite"></span>
+        <span id="sc-live" class="status live" hidden></span>
       </div>
       <div class="progress" hidden><div class="bar"></div></div>
 
@@ -63,7 +65,7 @@
           <table class="grid">
             <thead>
               <tr>
-                <th>Ativo</th><th>Sinal</th><th>Situação</th><th class="num">Preço</th>
+                <th>Ativo</th><th>Sinal</th><th>Situação</th><th class="num">Preço agora</th>
                 <th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th>
                 <th class="num">R:R</th><th>Tendência</th><th class="num">RSI</th><th class="num">Nota</th>
               </tr>

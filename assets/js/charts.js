@@ -33,6 +33,8 @@ function baseChart(el, height) {
 }
 
 let symbolChart = null;
+let symbolSeries = null;
+let liveLine = null;
 let equityChart = null;
 
 // Gráfico do ativo com o setup marcado. `setup` pode ser null (só contexto).
@@ -47,6 +49,8 @@ export function renderSymbolChart(el, cs, setup, struct) {
     priceFormat: { type: 'price', precision: d, minMove: 10 ** -d },
   });
   candles.setData(cs.map((c) => ({ time: sec(c.t), open: c.o, high: c.h, low: c.l, close: c.c })));
+  symbolSeries = candles;
+  liveLine = null;
   const vol = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '', lastValueVisible: false, priceLineVisible: false });
   vol.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
   vol.setData(cs.map((c) => ({ time: sec(c.t), value: c.v, color: c.c >= c.o ? css('--up-soft') : css('--down-soft') })));
@@ -92,6 +96,15 @@ export function renderSymbolChart(el, cs, setup, struct) {
   markers.sort((a, b) => a.time - b.time);
   candles.setMarkers(markers);
   return chart;
+}
+
+// Linha do preço atual (o candle em formação não entra no gráfico nem na análise).
+export function setLivePrice(price) {
+  if (!symbolSeries || !Number.isFinite(price)) return;
+  if (liveLine) { liveLine.applyOptions({ price }); return; }
+  liveLine = symbolSeries.createPriceLine({
+    price, color: css('--text-1'), lineWidth: 1, lineStyle: LW().LineStyle.SparseDotted, axisLabelVisible: true, title: 'Agora',
+  });
 }
 
 // Curva de resultado acumulado (em R), separando ajuste e período cego.

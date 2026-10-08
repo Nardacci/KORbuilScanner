@@ -12,7 +12,7 @@ Tudo roda no navegador: a página busca os dados públicos da Binance direto do 
 
 | Aba | O que faz |
 | --- | --- |
-| **Scanner** | Botão *Analisar agora*: baixa os candles das 10, 20 ou 40 moedas de maior volume (mais as extras das configurações), roda o motor e lista os ativos com **COMPRA**, **VENDA** ou **AGUARDAR**, com entrada, stop, alvo e R:R. Clicar num ativo abre o gráfico com as marcações e a explicação. Tempo gráfico escolhível (padrão **4 horas**). |
+| **Scanner** | Botão *Analisar agora*: baixa os candles das 10, 20 ou 40 moedas de maior volume (mais as extras das configurações), roda o motor e lista os ativos com **COMPRA**, **VENDA** ou **AGUARDAR**, com entrada, stop, alvo e R:R. Clicar num ativo abre o gráfico com as marcações e a explicação. Tempo gráfico escolhível (padrão **4 horas**). O **preço atualiza ao vivo** a cada 10 s, e a análise roda de novo sozinha quando o candle do tempo gráfico fecha (os sinais usam só candles fechados). |
 | **Backtest** | Roda as mesmas regras no histórico (6 meses a 3 anos), separa o **período de ajuste** do **período cego** e mostra acerto, R médio, fator de lucro, pior queda, curva acumulada, resultado por ativo e cada operação no gráfico. |
 | **Detalhe do ativo** | Além do gráfico e do plano, roda o **backtest do setup só naquele ativo** (1 a 3 anos): quantas operações, quantas lucrativas, compras x vendas, e cada operação clicável no gráfico. |
 | **Configurações** | Parâmetros do setup (força dos topos/fundos, R:R mínimo, validade da ordem, filtro do tempo maior, taxas, risco por operação) e ativos extras. Ficam salvos no navegador. |

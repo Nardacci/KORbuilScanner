@@ -1,7 +1,7 @@
 import { DEFAULTS, HTF, analyze } from './engine.js';
 import { backtestSymbol, summarize, metrics } from './backtest.js';
-import { topSymbols, klines, klinesRange, pool, setOnThrottle, INTERVAL_MS } from './binance.js';
-import { renderSymbolChart, renderEquity } from './charts.js';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js';
+import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js';
 import {
   fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
   describeSetup, describeStatus, describeWait,
@@ -66,12 +66,17 @@ async function symbolList(n) {
 let scan = null;       // { tf, htf, rows }
 let scanFilter = 'todos';
 
-async function runScan() {
+let scanning = false;
+let openSym = null; // ativo aberto no detalhe
+
+async function runScan(auto = false) {
   const tf = $('#sc-tf').value;
   const htf = HTF[tf];
   const n = Number($('#sc-n').value);
+  const keep = auto && !$('#detail').hidden ? openSym : null;
+  scanning = true;
   $('#sc-run').disabled = true;
-  $('#detail').hidden = true;
+  if (!keep) { $('#detail').hidden = true; openSym = null; }
   progress('#tab-scanner', 0);
   setOnThrottle((ms) => setStatus('#sc-status',`Aguardando o limite de requisições da Binance (${Math.ceil(ms / 1000)}s)…`));
   try {
@@ -91,16 +96,49 @@ async function runScan() {
     res.forEach((r, k) => (r.ok ? rows.push(r.value) : failed.push(`${list[k].symbol} (${r.error.message})`)));
     if (!rows.length) throw new Error(failed[0] || 'nenhum ativo analisado');
     rows.forEach((r, k) => { r.rank = k; });
-    scan = { tf, htf, rows, at: Date.now() };
+    const lastClose = Math.max(...rows.map((r) => r.cs[r.cs.length - 1].T));
+    scan = { tf, htf, rows, at: Date.now(), nextClose: lastClose + INTERVAL_MS[tf] };
     renderScan();
+    if (keep && rows.some((r) => r.symbol === keep)) showDetail(keep, undefined, false);
+    liveTick();
     const nAct = rows.filter((r) => r.a.active).length;
     setStatus('#sc-status', `${rows.length} ativos analisados às ${fmtDate(Date.now()).slice(9)} · ${nAct} com setup ativo` +
       (failed.length ? ` · falharam: ${failed.join(', ')}` : ''));
   } catch (e) {
     setStatus('#sc-status', e.message, true);
   } finally {
+    scanning = false;
     $('#sc-run').disabled = false;
     progress('#tab-scanner', null);
+  }
+}
+
+// Preço ao vivo a cada 10 s e nova análise quando o candle do tempo gráfico fecha.
+let liveBusy = false;
+async function liveTick() {
+  if (!scan || scanning || liveBusy || document.hidden) return;
+  // Reanálise: 10 s depois do fechamento, no máximo uma vez por minuto (a Binance pode demorar a publicar o candle).
+  if ($('#sc-auto').checked && Date.now() > scan.nextClose + 10e3 && Date.now() - scan.at > 60e3 && scan.tf === $('#sc-tf').value) {
+    runScan(true);
+    return;
+  }
+  liveBusy = true;
+  try {
+    const px = await livePrices();
+    for (const r of scan.rows) if (px.has(r.symbol)) r.live = px.get(r.symbol);
+    renderScan();
+    if (openSym && !$('#detail').hidden) {
+      const r = scan.rows.find((x) => x.symbol === openSym);
+      if (r && Number.isFinite(r.live)) {
+        $('#dt-price').textContent = fmtPrice(r.live);
+        setLivePrice(r.live);
+      }
+    }
+    const el = $('#sc-live');
+    el.hidden = false;
+    el.textContent = `Preço ao vivo · ${new Date().toLocaleTimeString('pt-BR')} · próximo candle fecha às ${new Date(scan.nextClose + 1).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch { /* falha momentânea: tenta de novo no próximo ciclo */ } finally {
+    liveBusy = false;
   }
 }
 
@@ -121,9 +159,20 @@ function trendCell(r) {
 function situation(r) {
   const s = r.a.active, c = r.a.context;
   if (!s) return rangeZone(c.rangePos).replace(/^na |^no /, '').replace(/^./, (x) => x.toUpperCase());
-  if (s.result.status === 'aberta') return `Em operação · ${fmtR(s.result.R)}`;
-  const dist = Math.abs((c.price - s.entry) / s.entry) * 100;
+  const price = Number.isFinite(r.live) ? r.live : c.price;
+  if (s.result.status === 'aberta') {
+    const R = (s.side === 'long' ? price - s.entry : s.entry - price) / Math.abs(s.entry - s.stop);
+    return `Em operação · ${fmtR(R)}`;
+  }
+  if (touched(r)) return 'Preço chegou na entrada';
+  const dist = Math.abs((price - s.entry) / s.entry) * 100;
   return `Ordem pendente · a ${fmtNum(dist, 1)}%`;
+}
+
+function touched(r) {
+  const s = r.a.active;
+  if (!s || s.result.status !== 'pendente' || !Number.isFinite(r.live)) return false;
+  return s.side === 'long' ? r.live <= s.entry : r.live >= s.entry;
 }
 
 function renderScan() {
@@ -140,11 +189,11 @@ function renderScan() {
     const s = r.a.active, c = r.a.context;
     const badge = s ? `<span class="badge ${s.side}">${sideLabel(s.side)}</span>${s.spring ? `<span class="tag">${s.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : ''}`
       : '<span class="badge wait">AGUARDAR</span>';
-    return `<tr data-sym="${esc(r.symbol)}">
+    return `<tr data-sym="${esc(r.symbol)}" class="${r.symbol === openSym && !$('#detail').hidden ? 'sel' : ''}">
       <td class="sym">${esc(r.symbol.replace(/USDT$/, ''))}<small>${Number.isFinite(r.change) ? fmtPct(r.change) : 'extra'}</small></td>
       <td>${badge}</td>
-      <td>${esc(situation(r))}</td>
-      <td class="num">${fmtPrice(c.price)}</td>
+      <td class="${touched(r) ? 'touch' : ''}">${esc(situation(r))}</td>
+      <td class="num">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</td>
       <td class="num">${s ? fmtPrice(s.entry) : '—'}</td>
       <td class="num">${s ? fmtPrice(s.stop) : '—'}</td>
       <td class="num">${s ? fmtPrice(s.target) : '—'}</td>
@@ -158,22 +207,26 @@ function renderScan() {
   $('#sc-results').hidden = false;
 }
 
-function showDetail(sym, setup = undefined) {
+function showDetail(sym, setup = undefined, scroll = true) {
   const r = scan.rows.find((x) => x.symbol === sym);
   if (!r) return;
+  openSym = sym;
   for (const tr of $$('#sc-body tr')) tr.classList.toggle('sel', tr.dataset.sym === sym);
   const a = r.a, c = a.context;
   const s = setup === undefined ? (a.active || a.recent[a.recent.length - 1] || null) : setup;
   const htfName = HTF_LABEL[scan.htf];
   $('#detail').hidden = false;
   $('#dt-title').innerHTML = `${esc(sym)} <span class="badge ${a.active ? a.active.side : 'wait'}">${a.active ? sideLabel(a.active.side) : 'AGUARDAR'}</span>`;
-  $('#dt-sub').textContent = `${TF_LABEL[scan.tf]} · preço ${fmtPrice(c.price)} · último candle fechado em ${fmtDate(r.cs[r.cs.length - 1].T + 1)}`;
+  $('#dt-sub').innerHTML = `${TF_LABEL[scan.tf]} · preço agora <b id="dt-price">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</b> · ` +
+    `análise com candles fechados até ${fmtDate(r.cs[r.cs.length - 1].T + 1)} · horários de abertura do candle, como no TradingView`;
   $('#dt-tv').href = `https://www.tradingview.com/chart/?symbol=BINANCE:${encodeURIComponent(sym)}.P`;
 
   renderSymbolChart($('#dt-chart'), r.cs, s, a.structure);
+  if (Number.isFinite(r.live)) setLivePrice(r.live);
   $('#dt-chart-note').hidden = true;
   $('#dt-chart-back').onclick = () => {
     renderSymbolChart($('#dt-chart'), r.cs, s, a.structure);
+    if (Number.isFinite(r.live)) setLivePrice(r.live);
     $('#dt-chart-note').hidden = true;
   };
 
@@ -220,7 +273,7 @@ function showDetail(sym, setup = undefined) {
     if (tr) showDetail(sym, hist[Number(tr.dataset.k)]);
   };
   if (setup === undefined) {
-    $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (scroll) $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     runAssetBacktest(sym);
   }
 }
@@ -488,7 +541,9 @@ function init() {
     if (tr) showDetail(tr.dataset.sym);
   });
   for (const c of $$('#sc-results .chip')) c.addEventListener('click', () => { scanFilter = c.dataset.f; renderScan(); });
-  $('#dt-close').addEventListener('click', () => { $('#detail').hidden = true; });
+  $('#dt-close').addEventListener('click', () => { $('#detail').hidden = true; openSym = null; renderScan(); });
+  setInterval(liveTick, 10e3);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
   $('#btd-close').addEventListener('click', () => { $('#bt-detail').hidden = true; });
   $('#bt-compare').addEventListener('click', runCompare);
   $('#bt-n').addEventListener('change', () => { $('#bt-custom-wrap').hidden = $('#bt-n').value !== 'custom'; });
