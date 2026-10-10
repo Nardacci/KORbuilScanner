@@ -155,6 +155,14 @@ table.grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabul
 
 .chart-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; padding: 8px 12px;
   border-radius: 8px; background: rgba(240, 185, 11, .08); border-left: 3px solid var(--warn); font-size: 13px; color: var(--text-2); }
+.cons-wrap { display: inline-flex; gap: 3px; }
+.cons { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; font-size: 11px; font-weight: 700; background: var(--surface-2); color: var(--text-3); }
+.cons.long { background: rgba(46, 189, 133, .2); color: var(--up); }
+.cons.short { background: rgba(246, 70, 93, .2); color: var(--down); }
+.cons-n { color: var(--text-2); font-size: 11px; }
+.mtabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.mtab { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.mtab[aria-pressed="true"] { border-color: var(--accent); color: var(--text-1); background: rgba(76, 157, 255, .12); }
 .compare-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 8px; }
 .compare-head h3 { margin: 0; }
 .small-note { font-size: 13px; margin: 0 0 10px; }

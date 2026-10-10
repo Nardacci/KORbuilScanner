@@ -48,7 +48,7 @@ export const HTF = {
   '6h': '1d', '8h': '3d', '12h': '3d', '1d': '1w',
 };
 
-const mirror = (cs) => cs.map((c) => ({ ...c, o: -c.o, h: -c.l, l: -c.h, c: -c.c }));
+export const mirror = (cs) => cs.map((c) => ({ ...c, o: -c.o, h: -c.l, l: -c.h, c: -c.c }));
 
 // ---------------------------------------------------------------------------
 // Estrutura de mercado (BOS / CHoCH) para contexto e marcações no gráfico.
@@ -101,7 +101,7 @@ export function makeHtfTrend(htf) {
 
 // ---------------------------------------------------------------------------
 // Detecção do lado comprado (o lado vendido usa os candles espelhados).
-function detectLong(cs, o, ind) {
+export function detectSmcLong(cs, o, ind) {
   const k = o.pivot;
   const highs = [], lows = [];
   const setups = [];
@@ -160,6 +160,19 @@ function detectLong(cs, o, ind) {
   return setups;
 }
 
+// Alvo: topo confirmado e ainda não rompido até o candle j, o mais próximo acima de `need`.
+export function findTarget(cs, highs, j, need, o) {
+  let target = null, targetIdx = -1;
+  for (const H of highs) {
+    if (H.i >= j || j - H.i > o.targetLookback || H.p < need) continue;
+    let taken = false;
+    for (let t = H.i + 1; t <= j; t++) if (cs[t].h > H.p) { taken = true; break; }
+    if (taken) continue;
+    if (target === null || H.p < target) { target = H.p; targetIdx = H.i; }
+  }
+  return { target, targetIdx };
+}
+
 function buildLong(cs, o, ind, S, j, highs) {
   // Order block: último candle de baixa até o fundo da varredura.
   const m = S.lowIdx;
@@ -178,16 +191,7 @@ function buildLong(cs, o, ind, S, j, highs) {
   const risk = entry - stop;
   if (!(risk > 0) || entry >= cs[j].c) return null;
 
-  // Alvo: topo confirmado e ainda não rompido, o mais próximo que dê minRR.
-  const need = entry + o.minRR * risk;
-  let target = null, targetIdx = -1;
-  for (const H of highs) {
-    if (H.i >= j || j - H.i > o.targetLookback || H.p < need) continue;
-    let taken = false;
-    for (let t = H.i + 1; t <= j; t++) if (cs[t].h > H.p) { taken = true; break; }
-    if (taken) continue;
-    if (target === null || H.p < target) { target = H.p; targetIdx = H.i; }
-  }
+  const { target, targetIdx } = findTarget(cs, highs, j, entry + o.minRR * risk, o);
   if (target === null) return null;
 
   // Wyckoff: o fundo varrido é o fundo de uma faixa lateral? (spring)
@@ -225,13 +229,17 @@ export function simulate(cs, st, o) {
   const { entry, stop, target } = st;
   const risk = entry - stop;
   const k0 = o.pivot;
-  // Último fundo confirmado depois da varredura: perder ele (no fechamento) é o BOS contra a compra.
+  // Último fundo confirmado depois do fundo de referência do setup: perder ele
+  // (no fechamento) é o BOS contra a compra.
+  const anchor = st.anchorIdx ?? st.sweepLowIdx;
   let lastLow = null;
   const notePivot = (p) => {
-    if (p > st.sweepLowIdx && isPivotLow(cs, p, k0)) lastLow = cs[p].l;
+    if (p > anchor && isPivotLow(cs, p, k0)) lastLow = cs[p].l;
   };
-  if (o.exitOnBOS) for (let p = st.sweepLowIdx + 1; p <= st.i - k0; p++) notePivot(p);
+  if (o.exitOnBOS) for (let p = anchor + 1; p <= st.i - k0; p++) notePivot(p);
   const res = { status: 'pendente', fillIdx: -1, exitIdx: -1, exitPrice: null, R: null, endIdx: cs.length - 1 };
+  // Entrada a mercado no fechamento do candle do sinal (Dow, Onda 34).
+  if (st.market) { res.fillIdx = st.i; res.status = 'aberta'; }
   const feeR = (exit) => ((o.feePct / 100) * (Math.abs(entry) + Math.abs(exit))) / risk;
   const close = (k, price, status) => {
     res.status = status; res.exitIdx = k; res.exitPrice = price; res.endIdx = k;
@@ -267,6 +275,12 @@ export function simulate(cs, st, o) {
 // ---------------------------------------------------------------------------
 // Ponto de entrada: detecta e simula compras e vendas e devolve preços reais.
 export function detectSetups(cs, opts = {}, htfTrendAt = null) {
+  return runDetector(cs, opts, htfTrendAt, detectSmcLong, 'smc');
+}
+
+// Roda o detector de compras de um método nos candles e nos candles espelhados (vendas),
+// simula cada setup e devolve os preços reais.
+export function runDetector(cs, opts, htfTrendAt, detector, method) {
   const o = { ...DEFAULTS, ...opts };
   const out = [];
   for (const side of ['long', 'short']) {
@@ -276,7 +290,8 @@ export function detectSetups(cs, opts = {}, htfTrendAt = null) {
       volAvg: sma(s.map((c) => c.v), 20),
       rsi: rsi(s.map((c) => c.c)),
     };
-    for (const st of detectLong(s, o, ind)) {
+    for (const st of detector(s, o, ind)) {
+      st.method = method;
       const htf = htfTrendAt ? htfTrendAt(cs[st.i].T) : 'lateral';
       const aligned = side === 'long' ? htf === 'alta' : htf === 'baixa';
       const against = side === 'long' ? htf === 'baixa' : htf === 'alta';
@@ -291,17 +306,18 @@ export function detectSetups(cs, opts = {}, htfTrendAt = null) {
   return out.sort((a, b) => a.i - b.i || (a.side < b.side ? -1 : 1));
 }
 
+// Campos de preço que precisam ser desvirados nas vendas.
+const PRICE_FIELDS = ['entry', 'stop', 'target', 'sweepLevel', 'sweepLow', 'chochLevel', 'obProx', 'obDist', 'waveHi', 'waveLo'];
+const POINT_FIELDS = ['swingL1', 'swingH', 'swingL2'];
+
 function toReal(st, side, htf, aligned) {
   const f = side === 'long' ? (x) => x : (x) => (x == null ? x : -x);
-  const r = {
-    ...st,
-    side, htf, aligned,
-    entry: f(st.entry), stop: f(st.stop), target: f(st.target),
-    sweepLevel: f(st.sweepLevel), sweepLow: f(st.sweepLow), chochLevel: f(st.chochLevel),
-    obProx: f(st.obProx), obDist: f(st.obDist),
-    rsi: side === 'long' ? st.rsi : 100 - st.rsi,
-    result: { ...st.result, exitPrice: f(st.result.exitPrice) },
-  };
+  const r = { ...st, side, htf, aligned };
+  for (const k of PRICE_FIELDS) if (k in st) r[k] = f(st[k]);
+  for (const k of POINT_FIELDS) if (st[k]) r[k] = { ...st[k], p: f(st[k].p) };
+  if (side === 'short' && 'waveHi' in st) { r.waveHi = -st.waveLo; r.waveLo = -st.waveHi; }
+  r.rsi = side === 'long' ? st.rsi : 100 - st.rsi;
+  r.result = { ...st.result, exitPrice: f(st.result.exitPrice) };
   if (st.range) {
     r.range = side === 'long' ? { ...st.range } : { ...st.range, hi: -st.range.lo, lo: -st.range.hi };
   }
@@ -320,13 +336,19 @@ export function scoreOf(s) {
 
 // ---------------------------------------------------------------------------
 // Análise de um ativo para o scanner.
-export function analyze(cs, htf, opts = {}) {
+// `detectors` = { id: detectorDeCompras }; o primeiro também preenche active/setups/recent.
+export function analyze(cs, htf, opts = {}, detectors = { smc: detectSmcLong }) {
   const o = { ...DEFAULTS, ...opts };
   const n = cs.length;
   const htfAt = makeHtfTrend(htf);
-  const setups = detectSetups(cs, o, htfAt);
-  const live = setups.filter((s) => s.result.status === 'pendente' || s.result.status === 'aberta');
-  const active = live.length ? live.reduce((a, b) => (b.score > a.score || (b.score === a.score && b.i > a.i) ? b : a)) : null;
+  const methods = {};
+  for (const [id, det] of Object.entries(detectors)) {
+    const setups = runDetector(cs, o, htfAt, det, id);
+    const live = setups.filter((s) => s.result.status === 'pendente' || s.result.status === 'aberta');
+    const active = live.length ? live.reduce((a, b) => (b.score > a.score || (b.score === a.score && b.i > a.i) ? b : a)) : null;
+    methods[id] = { active, setups, recent: setups.filter((s) => n - 1 - s.i <= 100) };
+  }
+  const first = methods[Object.keys(detectors)[0]];
 
   const closes = cs.map((c) => c.c);
   const e50 = ema(closes, 50);
@@ -344,9 +366,8 @@ export function analyze(cs, htf, opts = {}) {
   const lastEvent = struct.events.length ? struct.events[struct.events.length - 1] : null;
 
   return {
-    active,
-    setups,
-    recent: setups.filter((s) => n - 1 - s.i <= 100),
+    ...first,
+    methods,
     context: {
       price: last.c,
       tfTrend,

@@ -1,4 +1,7 @@
-import { DEFAULTS, HTF, analyze } from './engine.js';
+import { DEFAULTS, HTF } from './engine.js';
+import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js';
+import { dowState } from './dow.js';
+import { ondaState } from './onda34.js';
 import { backtestSymbol, summarize, metrics } from './backtest.js';
 import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js';
 import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js';
@@ -68,6 +71,13 @@ let scanFilter = 'todos';
 
 let scanning = false;
 let openSym = null; // ativo aberto no detalhe
+let scanMethod = 'smc';   // método que define o sinal na tabela
+let detailMethod = 'smc'; // método mostrado no detalhe
+
+// Visão de um ativo por um método: setups do método + contexto comum.
+const aOf = (r, m) => ({ ...r.all.methods[m], context: r.all.context, structure: r.all.structure });
+// Contexto específico do método (para o texto de "aguardar").
+const methodCtx = (r, m) => (m === 'dow' ? dowState(r.cs, cfg.pivot) : m === 'onda34' ? ondaState(r.cs) : null);
 
 async function runScan(auto = false) {
   const tf = $('#sc-tf').value;
@@ -86,11 +96,13 @@ async function runScan(auto = false) {
     const res = await pool(list, 6, async (item) => {
       const [cs, hcs] = await Promise.all([klines(item.symbol, tf, 999), klines(item.symbol, htf, 300)]);
       if (cs.length < 120) throw new Error('histórico curto');
-      const a = analyze(cs, hcs, cfg);
+      const all = analyzeAll(cs, hcs, cfg);
       done++;
       progress('#tab-scanner', done / list.length);
       setStatus('#sc-status', `Analisando… ${done}/${list.length}`);
-      return { ...item, cs, a };
+      const row = { ...item, cs, all };
+      Object.defineProperty(row, 'a', { get() { return aOf(this, scanMethod); } });
+      return row;
     });
     const rows = [], failed = [];
     res.forEach((r, k) => (r.ok ? rows.push(r.value) : failed.push(`${list[k].symbol} (${r.error.message})`)));
@@ -175,6 +187,19 @@ function touched(r) {
   return s.side === 'long' ? r.live <= s.entry : r.live >= s.entry;
 }
 
+// Uma letra por método: verde = compra, vermelho = venda, cinza = aguardar.
+function consCell(r) {
+  const c = consensus(r.all);
+  const dots = METHOD_IDS.map((m) => {
+    const a = r.all.methods[m].active;
+    const cls = a ? a.side : 'wait';
+    return `<span class="cons ${cls}" title="${esc(METHODS[m].name)}: ${a ? sideLabel(a.side) : 'aguardar'}">${METHODS[m].short[0]}</span>`;
+  }).join('');
+  const n = Math.max(c.long.length, c.short.length);
+  const side = c.long.length >= c.short.length ? 'compra' : 'venda';
+  return `<span class="cons-wrap">${dots}</span>${n >= 2 ? ` <small class="cons-n">${n}/${METHOD_IDS.length} ${side}</small>` : ''}`;
+}
+
 function renderScan() {
   const rows = [...scan.rows].sort(rowOrder);
   const counts = { todos: rows.length, long: 0, short: 0, aguardar: 0 };
@@ -192,6 +217,7 @@ function renderScan() {
     return `<tr data-sym="${esc(r.symbol)}" class="${r.symbol === openSym && !$('#detail').hidden ? 'sel' : ''}">
       <td class="sym">${esc(r.symbol.replace(/USDT$/, ''))}<small>${Number.isFinite(r.change) ? fmtPct(r.change) : 'extra'}</small></td>
       <td>${badge}</td>
+      <td>${consCell(r)}</td>
       <td class="${touched(r) ? 'touch' : ''}">${esc(situation(r))}</td>
       <td class="num">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</td>
       <td class="num">${s ? fmtPrice(s.entry) : '—'}</td>
@@ -202,7 +228,7 @@ function renderScan() {
       <td class="num">${fmtNum(c.rsi, 0)}</td>
       <td class="num">${s ? s.score : '—'}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11" class="muted">Nenhum ativo neste filtro.</td></tr>';
+  }).join('') || '<tr><td colspan="12" class="muted">Nenhum ativo neste filtro.</td></tr>';
   $('#sc-empty').hidden = true;
   $('#sc-results').hidden = false;
 }
@@ -212,20 +238,29 @@ function showDetail(sym, setup = undefined, scroll = true) {
   if (!r) return;
   openSym = sym;
   for (const tr of $$('#sc-body tr')) tr.classList.toggle('sel', tr.dataset.sym === sym);
-  const a = r.a, c = a.context;
+  const a = aOf(r, detailMethod), c = a.context;
   const s = setup === undefined ? (a.active || a.recent[a.recent.length - 1] || null) : setup;
   const htfName = HTF_LABEL[scan.htf];
   $('#detail').hidden = false;
+  $('#dt-methods').innerHTML = METHOD_IDS.map((m) => {
+    const act = r.all.methods[m].active;
+    return `<button class="mtab" data-m="${m}" aria-pressed="${m === detailMethod}">${esc(METHODS[m].name)}
+      <span class="badge ${act ? act.side : 'wait'}">${act ? sideLabel(act.side) : 'AGUARDAR'}</span></button>`;
+  }).join('');
+  $('#dt-methods').onclick = (ev) => {
+    const b = ev.target.closest('button[data-m]');
+    if (b && b.dataset.m !== detailMethod) { detailMethod = b.dataset.m; showDetail(sym, undefined, false); }
+  };
   $('#dt-title').innerHTML = `${esc(sym)} <span class="badge ${a.active ? a.active.side : 'wait'}">${a.active ? sideLabel(a.active.side) : 'AGUARDAR'}</span>`;
   $('#dt-sub').innerHTML = `${TF_LABEL[scan.tf]} · preço agora <b id="dt-price">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</b> · ` +
     `análise com candles fechados até ${fmtDate(r.cs[r.cs.length - 1].T + 1)} · horários de abertura do candle, como no TradingView`;
   $('#dt-tv').href = `https://www.tradingview.com/chart/?symbol=BINANCE:${encodeURIComponent(sym)}.P`;
 
-  renderSymbolChart($('#dt-chart'), r.cs, s, a.structure);
+  renderSymbolChart($('#dt-chart'), r.cs, s, a.structure, detailMethod);
   if (Number.isFinite(r.live)) setLivePrice(r.live);
   $('#dt-chart-note').hidden = true;
   $('#dt-chart-back').onclick = () => {
-    renderSymbolChart($('#dt-chart'), r.cs, s, a.structure);
+    renderSymbolChart($('#dt-chart'), r.cs, s, a.structure, detailMethod);
     if (Number.isFinite(r.live)) setLivePrice(r.live);
     $('#dt-chart-note').hidden = true;
   };
@@ -248,7 +283,8 @@ function showDetail(sym, setup = undefined, scroll = true) {
       <p class="note">${describeStatus(s, r.cs, cfg)}</p>
       <p class="note muted">A alavancagem sugerida (no máximo 10×) mantém a liquidação pelo menos 2× mais longe que o stop. O tamanho da posição sai do risco por operação, não da alavancagem.</p>`;
     $('#dt-text').innerHTML = describeSetup(s, r.cs, scan.tf, htfName).map((p) => `<p>${p}</p>`).join('') +
-      (isActive ? '' : `<p class="muted">Não há setup ativo agora. Este é o último setup encontrado.</p>` + describeWait(c, scan.tf, htfName).map((p) => `<p>${p}</p>`).join(''));
+      (isActive ? '' : `<p class="muted">Não há setup ativo agora. Este é o último setup encontrado.</p>` +
+        describeWait(c, scan.tf, htfName, detailMethod, methodCtx(r, detailMethod)).map((p) => `<p>${p}</p>`).join(''));
   } else {
     $('#dt-plan').innerHTML = `<span class="badge wait">AGUARDAR</span>
       <dl>
@@ -257,7 +293,7 @@ function showDetail(sym, setup = undefined, scroll = true) {
         <dt>Posição na faixa</dt><dd>${fmtNum(c.rangePos * 100, 0)}%</dd>
         <dt>RSI</dt><dd>${fmtNum(c.rsi, 0)}</dd>
       </dl>`;
-    $('#dt-text').innerHTML = describeWait(c, scan.tf, htfName).map((p) => `<p>${p}</p>`).join('');
+    $('#dt-text').innerHTML = describeWait(c, scan.tf, htfName, detailMethod, methodCtx(r, detailMethod)).map((p) => `<p>${p}</p>`).join('');
   }
 
   const hist = [...a.recent].reverse();
@@ -285,13 +321,14 @@ async function runAssetBacktest(sym) {
   const tf = scan.tf;
   const run = ++assetRun;
   const box = $('#dt-bt');
-  $('#dt-bt-title').textContent = `Este setup no histórico de ${sym.replace(/USDT$/, '')} (${tf})`;
+  const method = detailMethod;
+  $('#dt-bt-title').textContent = `${METHODS[method].name} no histórico de ${sym.replace(/USDT$/, '')} (${tf})`;
   box.className = 'muted';
   box.textContent = 'Baixando o histórico e rodando o backtest deste ativo…';
   try {
     const data = await getHistory(sym, tf, months);
     if (run !== assetRun) return; // o usuário já abriu outro ativo
-    const res = backtestSymbol(sym, data.cs, data.hcs, cfg, data.start);
+    const res = backtestSymbol(sym, data.cs, data.hcs, cfg, data.start, method);
     const all = metrics(res.trades, cfg.riskPct);
     const longs = metrics(res.trades.filter((t) => t.side === 'long'), cfg.riskPct);
     const shorts = metrics(res.trades.filter((t) => t.side === 'short'), cfg.riskPct);
@@ -360,7 +397,9 @@ async function runBacktest() {
   const months = Number($('#bt-months').value);
   const nSel = $('#bt-n').value;
   const blind = Number($('#bt-blind').value);
+  const method = $('#bt-method').value;
   $('#bt-run').disabled = true;
+  $('#bt-methods-wrap').hidden = true;
   $('#bt-compare-wrap').hidden = true;
   $('#bt-detail').hidden = true;
   progress('#tab-backtest', 0);
@@ -377,7 +416,7 @@ async function runBacktest() {
     let done = 0;
     const res = await pool(list, 3, async (item) => {
       const data = await getHistory(item.symbol, tf, months);
-      const r = backtestSymbol(item.symbol, data.cs, data.hcs, cfg, data.start);
+      const r = backtestSymbol(item.symbol, data.cs, data.hcs, cfg, data.start, method);
       r.cs = data.cs;
       r.hcs = data.hcs;
       r.start = data.start;
@@ -393,7 +432,7 @@ async function runBacktest() {
     const start = Math.min(...ok.map((r) => r.start));
     const end = Math.max(...ok.map((r) => r.end));
     const cutT = start + (end - start) * (1 - blind);
-    bt = { tf, months, cutT, start, results: ok, summary: summarize(ok, cutT, cfg.riskPct) };
+    bt = { tf, months, method, cutT, start, results: ok, summary: summarize(ok, cutT, cfg.riskPct) };
     renderBacktest();
     setStatus('#bt-status', `${ok.length} ativos testados · ${bt.summary.all.trades} operações` + (failed.length ? ` · falharam: ${failed.join(', ')}` : ''));
   } catch (e) {
@@ -429,7 +468,7 @@ function renderBacktest() {
   ];
   const allOk = crit.every((c) => c[0]);
   $('#bt-verdict').innerHTML = `<b>${allOk ? 'Setup maduro para o teste em modo papel.' : 'Ainda não está maduro.'}</b>
-    <span class="muted"> ${TF_LABEL[bt.tf]} · ${bt.months} meses · cego a partir de ${fmtDate(bt.cutT, false)}</span>
+    <span class="muted"> ${esc(METHODS[bt.method].name)} · ${TF_LABEL[bt.tf]} · ${bt.months} meses · cego a partir de ${fmtDate(bt.cutT, false)}</span>
     <ul>${crit.map(([ok, t]) => `<li class="${ok ? 'ok' : 'no'}">${t}</li>`).join('')}</ul>`;
   $('#bt-cards').innerHTML = card('Período de ajuste', s.inSample) + card('Período cego', s.outSample) + card('Total', s.all);
   $('#bt-empty').hidden = true;
@@ -483,7 +522,7 @@ function runCompare() {
   ];
   const rows = variants.map(([name, extra]) => {
     const o = { ...cfg, ...extra };
-    const results = bt.results.map((r) => backtestSymbol(r.symbol, r.cs, r.hcs, o, r.start));
+    const results = bt.results.map((r) => backtestSymbol(r.symbol, r.cs, r.hcs, o, r.start, bt.method));
     return { name, s: summarize(results, bt.cutT, cfg.riskPct) };
   });
   const best = rows.reduce((a, b) => (b.s.all.totalR > a.s.all.totalR ? b : a));
@@ -496,6 +535,25 @@ function runCompare() {
       <td class="num ${cls(c.avgR)}">${c.trades ? fmtR(c.avgR) : '—'}</td><td class="num">${m.maxLosingStreak}</td></tr>`;
   }).join('');
   $('#bt-compare-wrap').hidden = false;
+}
+
+// Roda todos os métodos com os mesmos dados e a mesma configuração.
+function runCompareMethods() {
+  if (!bt) return;
+  const cls = (x) => (x > 0 ? 'pos' : x < 0 ? 'neg' : '');
+  const rows = METHOD_IDS.map((m) => {
+    const results = bt.results.map((r) => backtestSymbol(r.symbol, r.cs, r.hcs, cfg, r.start, m));
+    return { m, s: summarize(results, bt.cutT, cfg.riskPct) };
+  });
+  const best = rows.reduce((a, b) => (b.s.all.totalR > a.s.all.totalR ? b : a));
+  $('#bt-methods-body').innerHTML = rows.map(({ m, s }) => {
+    const a = s.all, c = s.outSample;
+    return `<tr class="${best.m === m ? 'best' : ''}"><td>${esc(METHODS[m].name)}</td><td class="num">${a.trades}</td>
+      <td class="num">${fmtNum(a.winRate * 100, 0)}%</td><td class="num ${cls(a.avgR)}">${fmtR(a.avgR)}</td>
+      <td class="num ${cls(a.totalR)}">${fmtR(a.totalR)}</td><td class="num">${a.profitFactor === Infinity ? '∞' : fmtNum(a.profitFactor, 2)}</td>
+      <td class="num ${cls(c.avgR)}">${c.trades ? fmtR(c.avgR) : '—'}</td><td class="num">${a.maxLosingStreak}</td></tr>`;
+  }).join('');
+  $('#bt-methods-wrap').hidden = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -546,6 +604,16 @@ function init() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
   $('#btd-close').addEventListener('click', () => { $('#bt-detail').hidden = true; });
   $('#bt-compare').addEventListener('click', runCompare);
+  $('#bt-compare-methods').addEventListener('click', runCompareMethods);
+  const methodOpts = METHOD_IDS.map((m) => `<option value="${m}">${esc(METHODS[m].name)}</option>`).join('');
+  $('#sc-method').innerHTML = methodOpts;
+  $('#bt-method').innerHTML = methodOpts;
+  $('#sc-method').addEventListener('change', () => {
+    scanMethod = detailMethod = $('#sc-method').value;
+    if (!scan) return;
+    renderScan();
+    if (openSym && !$('#detail').hidden) showDetail(openSym, undefined, false);
+  });
   $('#bt-n').addEventListener('change', () => { $('#bt-custom-wrap').hidden = $('#bt-n').value !== 'custom'; });
   $('#dt-bt-months').addEventListener('change', () => {
     const sel = $('#sc-body tr.sel');
