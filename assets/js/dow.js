@@ -6,6 +6,8 @@
 //      agora há topo e fundo ascendentes, a tendência de alta está confirmada.
 //   3. Entrada a mercado no fechamento desse candle; stop abaixo do fundo mais alto;
 //      alvo na próxima liquidez acima ou, se não houver, 3× o risco.
+//   Saída antecipada: fechamento abaixo de um fundo novo formado depois da entrada
+//   (a sequência de fundos ascendentes se desfez).
 // O volume acima da média no rompimento é a "confirmação pelo volume" de Dow e soma pontos.
 
 import { isPivotHigh, isPivotLow } from './indicators.js';
@@ -48,6 +50,7 @@ export function detectDowLong(cs, o, ind) {
       i, market: true, entry, stop, target, targetIdx,
       rr: (target - entry) / risk,
       anchorIdx: L2.i,
+      exitOnStructure: true, // sai se perder (no fechamento) um fundo formado depois da entrada
       swingL1: { i: L1.i, p: L1.p }, swingH: { i: H.i, p: H.p }, swingL2: { i: L2.i, p: L2.p },
       volRatio: ind.volAvg[i] > 0 ? c.v / ind.volAvg[i] : 0,
       rsi: ind.rsi[i],

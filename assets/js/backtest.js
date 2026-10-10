@@ -4,7 +4,7 @@
 import { DEFAULTS, makeHtfTrend } from './engine.js';
 import { detectWith } from './methods.js';
 
-const CLOSED = new Set(['ganho', 'perda', 'tempo', 'bos']);
+const CLOSED = new Set(['ganho', 'perda', 'tempo', 'bos', 'onda']);
 
 // Operações de um ativo. `startT` descarta setups antes do início pedido
 // (os candles anteriores servem só de aquecimento).

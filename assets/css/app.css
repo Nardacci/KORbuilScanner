@@ -118,6 +118,9 @@ table.grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabul
 .badge.long { background: rgba(46, 189, 133, .15); color: var(--up); }
 .badge.short { background: rgba(246, 70, 93, .15); color: var(--down); }
 .badge.wait { background: var(--surface-2); color: var(--text-3); }
+.badge.open { background: none; border: 1px dashed currentColor; padding: 1px 7px; }
+.tag.new { background: rgba(76, 157, 255, .16); color: var(--accent); }
+.cons.open { opacity: .55; }
 .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(240, 185, 11, .14); color: var(--warn); margin-left: 6px; }
 .pos { color: var(--up); }
 .neg { color: var(--down); }

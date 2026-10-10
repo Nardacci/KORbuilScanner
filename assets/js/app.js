@@ -154,12 +154,26 @@ async function liveTick() {
   }
 }
 
+// Sinal novo (no último candle fechado) > ordem pendente > posição já aberta > aguardar.
+const isOpen = (s, cs) => s && s.result.status === 'aberta' && s.result.fillIdx < cs.length - 1;
+const isNew = (s, cs) => s && s.i === cs.length - 1;
+const prio = (r) => { const s = r.a.active; return !s ? 0 : isNew(s, r.cs) ? 3 : isOpen(s, r.cs) ? 1 : 2; };
+
 function rowOrder(a, b) {
-  const sa = a.a.active, sb = b.a.active;
-  if (sa && !sb) return -1;
-  if (sb && !sa) return 1;
-  if (sa && sb) return sb.score - sa.score;
+  const pa = prio(a), pb = prio(b);
+  if (pa !== pb) return pb - pa;
+  if (pa) return b.a.active.score - a.a.active.score;
   return a.rank - b.rank;
+}
+
+// Selo do sinal: COMPRA/VENDA para sinal novo ou ordem pendente; COMPRADO/VENDIDO para
+// posição aberta por um sinal anterior (não é para entrar agora).
+function signalBadge(s, cs) {
+  if (!s) return '<span class="badge wait">AGUARDAR</span>';
+  if (isOpen(s, cs)) {
+    return `<span class="badge ${s.side} open" title="Posição aberta por um sinal anterior. Não é sinal de entrada agora.">${s.side === 'long' ? 'COMPRADO' : 'VENDIDO'}</span>`;
+  }
+  return `<span class="badge ${s.side}">${sideLabel(s.side)}</span>${isNew(s, cs) ? '<span class="tag new">novo</span>' : ''}`;
 }
 
 function trendCell(r) {
@@ -174,7 +188,7 @@ function situation(r) {
   const price = Number.isFinite(r.live) ? r.live : c.price;
   if (s.result.status === 'aberta') {
     const R = (s.side === 'long' ? price - s.entry : s.entry - price) / Math.abs(s.entry - s.stop);
-    return `Em operação · ${fmtR(R)}`;
+    return `Em operação desde ${fmtDate(r.cs[s.result.fillIdx].t)} · ${fmtR(R)}`;
   }
   if (touched(r)) return 'Preço chegou na entrada';
   const dist = Math.abs((price - s.entry) / s.entry) * 100;
@@ -192,8 +206,8 @@ function consCell(r) {
   const c = consensus(r.all);
   const dots = METHOD_IDS.map((m) => {
     const a = r.all.methods[m].active;
-    const cls = a ? a.side : 'wait';
-    return `<span class="cons ${cls}" title="${esc(METHODS[m].name)}: ${a ? sideLabel(a.side) : 'aguardar'}">${METHODS[m].short[0]}</span>`;
+    const cls = a ? `${a.side}${isOpen(a, r.cs) ? ' open' : ''}` : 'wait';
+    return `<span class="cons ${cls}" title="${esc(METHODS[m].name)}: ${a ? (isOpen(a, r.cs) ? `posição aberta (${sideLabel(a.side).toLowerCase()})` : sideLabel(a.side)) : 'aguardar'}">${METHODS[m].short[0]}</span>`;
   }).join('');
   const n = Math.max(c.long.length, c.short.length);
   const side = c.long.length >= c.short.length ? 'compra' : 'venda';
@@ -212,8 +226,7 @@ function renderScan() {
   const vis = rows.filter((r) => scanFilter === 'todos' || (r.a.active ? r.a.active.side : 'aguardar') === scanFilter);
   $('#sc-body').innerHTML = vis.map((r) => {
     const s = r.a.active, c = r.a.context;
-    const badge = s ? `<span class="badge ${s.side}">${sideLabel(s.side)}</span>${s.spring ? `<span class="tag">${s.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : ''}`
-      : '<span class="badge wait">AGUARDAR</span>';
+    const badge = signalBadge(s, r.cs) + (s && s.spring ? `<span class="tag">${s.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : '');
     return `<tr data-sym="${esc(r.symbol)}" class="${r.symbol === openSym && !$('#detail').hidden ? 'sel' : ''}">
       <td class="sym">${esc(r.symbol.replace(/USDT$/, ''))}<small>${Number.isFinite(r.change) ? fmtPct(r.change) : 'extra'}</small></td>
       <td>${badge}</td>
@@ -245,13 +258,13 @@ function showDetail(sym, setup = undefined, scroll = true) {
   $('#dt-methods').innerHTML = METHOD_IDS.map((m) => {
     const act = r.all.methods[m].active;
     return `<button class="mtab" data-m="${m}" aria-pressed="${m === detailMethod}">${esc(METHODS[m].name)}
-      <span class="badge ${act ? act.side : 'wait'}">${act ? sideLabel(act.side) : 'AGUARDAR'}</span></button>`;
+      ${signalBadge(act, r.cs)}</button>`;
   }).join('');
   $('#dt-methods').onclick = (ev) => {
     const b = ev.target.closest('button[data-m]');
     if (b && b.dataset.m !== detailMethod) { detailMethod = b.dataset.m; showDetail(sym, undefined, false); }
   };
-  $('#dt-title').innerHTML = `${esc(sym)} <span class="badge ${a.active ? a.active.side : 'wait'}">${a.active ? sideLabel(a.active.side) : 'AGUARDAR'}</span>`;
+  $('#dt-title').innerHTML = `${esc(sym)} ${signalBadge(a.active, r.cs)}`;
   $('#dt-sub').innerHTML = `${TF_LABEL[scan.tf]} · preço agora <b id="dt-price">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</b> · ` +
     `análise com candles fechados até ${fmtDate(r.cs[r.cs.length - 1].T + 1)} · horários de abertura do candle, como no TradingView`;
   $('#dt-tv').href = `https://www.tradingview.com/chart/?symbol=BINANCE:${encodeURIComponent(sym)}.P`;
