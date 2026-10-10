@@ -34,6 +34,9 @@
         <label>Tempo gráfico
           <select id="sc-tf"></select>
         </label>
+        <label>Método
+          <select id="sc-method"></select>
+        </label>
         <label>Ativos
           <select id="sc-n">
             <option value="10">Top 10</option>
@@ -65,7 +68,7 @@
           <table class="grid">
             <thead>
               <tr>
-                <th>Ativo</th><th>Sinal</th><th>Situação</th><th class="num">Preço agora</th>
+                <th>Ativo</th><th>Sinal</th><th title="S = SMC + Wyckoff · D = Dow · O = Onda 34">Métodos</th><th>Situação</th><th class="num">Preço agora</th>
                 <th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th>
                 <th class="num">R:R</th><th>Tendência</th><th class="num">RSI</th><th class="num">Nota</th>
               </tr>
@@ -86,6 +89,7 @@
             <button id="dt-close" class="ghost" aria-label="Fechar detalhe">✕</button>
           </div>
         </header>
+        <div id="dt-methods" class="mtabs" role="group" aria-label="Método"></div>
         <p id="dt-chart-note" class="chart-note" hidden><span></span> <button id="dt-chart-back" class="ghost">Voltar ao sinal atual</button></p>
         <div id="dt-chart" class="chart"></div>
         <div class="detail-body">
@@ -120,6 +124,9 @@
       <div class="toolbar">
         <label>Tempo gráfico
           <select id="bt-tf"></select>
+        </label>
+        <label>Método
+          <select id="bt-method"></select>
         </label>
         <label>Período
           <select id="bt-months">
@@ -162,6 +169,17 @@
       <div id="bt-results" hidden>
         <div id="bt-verdict" class="verdict"></div>
         <div class="cards" id="bt-cards"></div>
+        <div class="compare-head">
+          <h3>Comparar os métodos</h3>
+          <button id="bt-compare-methods" class="ghost">Comparar os métodos</button>
+        </div>
+        <p class="muted small-note">Roda SMC + Wyckoff, Dow e Onda 34 nos mesmos ativos e período, com a mesma configuração.</p>
+        <div class="table-wrap" id="bt-methods-wrap" hidden>
+          <table class="grid small">
+            <thead><tr><th>Método</th><th class="num">Operações</th><th class="num">Acerto</th><th class="num">R médio</th><th class="num">Total</th><th class="num">Fator de lucro</th><th class="num">R médio no cego</th><th class="num">Pior sequência</th></tr></thead>
+            <tbody id="bt-methods-body"></tbody>
+          </table>
+        </div>
         <div class="compare-head">
           <h3>Comparar opções</h3>
           <button id="bt-compare" class="ghost">Comparar as melhorias</button>
@@ -285,6 +303,18 @@
         <li>Se stop e alvo são tocados no mesmo candle, conta como <b>stop</b>.</li>
         <li>Resultado em <b>R</b> (múltiplos do risco), já descontando a taxa de entrada e de saída.</li>
       </ul>
+      <h2>Teoria de Dow</h2>
+      <p>Tendência de alta = <b>topos e fundos ascendentes</b>. O sinal de compra aparece quando, depois de um <b>fundo mais alto</b>,
+      o preço fecha acima do topo que ficou entre os dois fundos. Entrada a mercado no fechamento desse candle, stop abaixo do fundo mais alto,
+      alvo na próxima liquidez acima (ou 3× o risco). Volume acima da média no rompimento é a confirmação de Dow e soma pontos. A venda é o espelho.</p>
+      <h2>Onda 34 (Raghee Horner)</h2>
+      <p>Três médias exponenciais de 34 períodos (máximas, fechamentos e mínimas) formam a <b>onda</b>. No gráfico, os candles ficam
+      <b>verdes</b> (fechou acima da onda), <b>vermelhos</b> (abaixo) ou <b>azuis</b> (dentro: ficar de fora).
+      O sinal de compra pede onda subindo, recuo até a onda sem fechar abaixo dela e o <b>primeiro candle verde</b> depois do recuo.
+      Entrada a mercado no fechamento, stop abaixo do recuo e da onda.</p>
+      <h2>Coluna "Métodos" no scanner</h2>
+      <p>Uma letra por método (S = SMC + Wyckoff, D = Dow, O = Onda 34): verde = compra, vermelho = venda, cinza = aguardar.
+      Quando 2 ou mais concordam, aparece o placar. Concordância não é garantia: compare os métodos no backtest.</p>
       <h2>Refinamentos (Configurações)</h2>
       <ul>
         <li><b>Entrada no meio do order block:</b> quando o bloco é grande, entrar no topo deixa o stop longe demais.</li>

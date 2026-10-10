@@ -1,7 +1,8 @@
 # KORbuild Scanner
 
-Página web que analisa os futuros perpétuos USDT da Binance com um setup **SMC + Wyckoff**
-e mostra as oportunidades de compra e venda, com gráfico marcado e backtest.
+Página web que analisa os futuros perpétuos USDT da Binance com três métodos — **SMC + Wyckoff**,
+**Teoria de Dow** e **Onda 34 (Raghee Horner)** — e mostra as oportunidades de compra e venda,
+com gráfico marcado, consenso entre os métodos e backtest.
 
 Tudo roda no navegador: a página busca os dados públicos da Binance direto do computador de quem usa
 (sem servidor, sem chave de API, sem custo).
@@ -36,12 +37,25 @@ sair no BOS contra a posição e nota mínima do setup.
 O motor processa candle a candle e só usa o que já era conhecido no fechamento de cada candle,
 então o backtest não olha o futuro (há teste automático para isso).
 
+## Outros métodos
+
+- **Teoria de Dow**: depois de um fundo mais alto, compra quando o preço fecha acima do topo entre os dois fundos
+  (topos e fundos ascendentes). Entrada a mercado, stop abaixo do fundo mais alto. Volume acima da média soma pontos.
+- **Onda 34 (Raghee Horner)**: EMAs de 34 das máximas, fechamentos e mínimas; candles GRaB (verde, vermelho, azul).
+  Compra no primeiro candle verde depois de um recuo até a onda, com a onda subindo. Candles azuis = ficar de fora.
+
+O scanner mostra o sinal do método escolhido e uma coluna com o estado dos três (S, D, O). O detalhe tem uma aba
+por método, e o backtest tem o botão *Comparar os métodos*.
+
 ## Estrutura
 
 ```
 index.html               página
 assets/css/app.css       estilo
-assets/js/engine.js      motor: estrutura, varreduras, CHoCH, order block, simulação
+assets/js/engine.js      motor SMC + Wyckoff, simulação e execução genérica dos métodos
+assets/js/dow.js         Teoria de Dow
+assets/js/onda34.js      Onda 34 e candles GRaB
+assets/js/methods.js     registro dos métodos e consenso
 assets/js/backtest.js    backtest e métricas
 assets/js/indicators.js  ATR, EMA, RSI, topos e fundos
 assets/js/binance.js     dados da Binance (com limite de requisições)

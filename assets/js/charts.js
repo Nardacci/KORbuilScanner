@@ -2,6 +2,7 @@
 // vendor/ como script global `LightweightCharts`.
 
 import { fmtPrice } from './texts.js';
+import { waves, grab } from './onda34.js';
 
 const LW = () => window.LightweightCharts;
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -38,7 +39,8 @@ let liveLine = null;
 let equityChart = null;
 
 // Gráfico do ativo com o setup marcado. `setup` pode ser null (só contexto).
-export function renderSymbolChart(el, cs, setup, struct) {
+// `method` define as camadas extras: Onda 34 desenha a onda e pinta os candles GRaB.
+export function renderSymbolChart(el, cs, setup, struct, method = setup?.method || 'smc') {
   if (symbolChart) { symbolChart.remove(); symbolChart = null; }
   const chart = baseChart(el, el.clientHeight || 460);
   symbolChart = chart;
@@ -48,7 +50,21 @@ export function renderSymbolChart(el, cs, setup, struct) {
     upColor: up, downColor: down, wickUpColor: up, wickDownColor: down, borderVisible: false,
     priceFormat: { type: 'price', precision: d, minMove: 10 ** -d },
   });
-  candles.setData(cs.map((c) => ({ time: sec(c.t), open: c.o, high: c.h, low: c.l, close: c.c })));
+  const onda = method === 'onda34';
+  const w = onda ? waves(cs) : null;
+  const colors = onda ? grab(cs, w) : null;
+  const GRAB = { g: up, r: down, b: css('--accent') };
+  candles.setData(cs.map((c, i) => {
+    const bar = { time: sec(c.t), open: c.o, high: c.h, low: c.l, close: c.c };
+    if (onda && colors[i]) { bar.color = GRAB[colors[i]]; bar.wickColor = GRAB[colors[i]]; }
+    return bar;
+  }));
+  if (onda) {
+    for (const [key, title] of [['hi', 'Onda máx.'], ['mid', 'Onda'], ['lo', 'Onda mín.']]) {
+      const ls = chart.addLineSeries({ color: css('--warn'), lineWidth: key === 'mid' ? 2 : 1, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, title: key === 'mid' ? 'EMA 34' : '' });
+      ls.setData(cs.map((c, i) => ({ time: sec(c.t), value: w[key][i] })).filter((x) => Number.isFinite(x.value)));
+    }
+  }
   symbolSeries = candles;
   liveLine = null;
   const vol = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '', lastValueVisible: false, priceLineVisible: false });
@@ -60,8 +76,8 @@ export function renderSymbolChart(el, cs, setup, struct) {
   const line = (price, color, title, style = LS.Solid, width = 1) =>
     candles.createPriceLine({ price, color, title, lineStyle: style, lineWidth: width, axisLabelVisible: true });
 
-  // Eventos de estrutura recentes (BOS/CHoCH), discretos.
-  if (struct) {
+  // Eventos de estrutura recentes (BOS/CHoCH), discretos (só no SMC).
+  if (struct && method === 'smc') {
     for (const e of struct.events.slice(-8)) {
       if (setup && e.i === setup.i) continue;
       markers.push({ time: sec(cs[e.i].t), position: e.dir > 0 ? 'aboveBar' : 'belowBar', color: css('--text-3'), shape: 'circle', text: e.type, size: 0.5 });
@@ -70,24 +86,41 @@ export function renderSymbolChart(el, cs, setup, struct) {
 
   if (setup) {
     const long = setup.side === 'long';
-    markers.push({ time: sec(cs[setup.sweepLowIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: setup.spring ? (long ? 'Spring' : 'Upthrust') : 'Varredura' });
-    markers.push({ time: sec(cs[setup.obIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--accent'), shape: 'square', text: 'OB', size: 0.7 });
-    markers.push({ time: sec(cs[setup.i].t), position: long ? 'aboveBar' : 'belowBar', color: css('--accent'), shape: 'circle', text: 'CHoCH' });
+    const below = long ? 'belowBar' : 'aboveBar', above = long ? 'aboveBar' : 'belowBar';
+    if (setup.method === 'dow') {
+      markers.push({ time: sec(cs[setup.swingL1.i].t), position: below, color: css('--text-2'), shape: 'circle', text: long ? 'Fundo' : 'Topo', size: 0.7 });
+      markers.push({ time: sec(cs[setup.swingH.i].t), position: above, color: css('--text-2'), shape: 'circle', text: long ? 'Topo' : 'Fundo', size: 0.7 });
+      markers.push({ time: sec(cs[setup.swingL2.i].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: long ? 'Fundo mais alto' : 'Topo mais baixo' });
+      markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: long ? 'Rompeu o topo' : 'Perdeu o fundo' });
+    } else if (setup.method === 'onda34') {
+      markers.push({ time: sec(cs[setup.pullbackIdx].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Recuo na onda' });
+      if (setup.pullbackIdx !== setup.i) markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: 'Retomada' });
+    } else {
+      markers.push({ time: sec(cs[setup.sweepLowIdx].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: setup.spring ? (long ? 'Spring' : 'Upthrust') : 'Varredura' });
+      markers.push({ time: sec(cs[setup.obIdx].t), position: below, color: css('--accent'), shape: 'square', text: 'OB', size: 0.7 });
+      markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: 'CHoCH' });
+    }
     const r = setup.result;
-    if (r.fillIdx >= 0) markers.push({ time: sec(cs[r.fillIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--text-1'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Entrada' });
+    if (r.fillIdx >= 0 && !setup.market) markers.push({ time: sec(cs[r.fillIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--text-1'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Entrada' });
     if (r.exitIdx >= 0) markers.push({ time: sec(cs[r.exitIdx].t), position: 'inBar', color: r.R > 0 ? up : down, shape: 'circle', text: r.status === 'ganho' ? 'Alvo' : r.status === 'perda' ? 'Stop' : r.status === 'bos' ? 'Saída BOS' : 'Saída' });
 
     line(setup.entry, css('--accent'), `Entrada ${fmtPrice(setup.entry)}`, LS.Solid, 2);
     line(setup.stop, down, 'Stop', LS.Solid, 2);
     line(setup.target, up, 'Alvo', LS.Solid, 2);
-    line(setup.obDist, css('--accent'), 'OB', LS.Dashed);
-    line(setup.sweepLevel, css('--warn'), 'Liquidez varrida', LS.Dotted);
-    line(setup.chochLevel, css('--text-3'), 'CHoCH', LS.Dotted);
+    if (setup.method === 'dow') {
+      line(setup.swingH.p, css('--text-3'), long ? 'Topo rompido' : 'Fundo perdido', LS.Dotted);
+    }
+    if (setup.method === 'smc' || !setup.method) {
+      line(setup.obDist, css('--accent'), 'OB', LS.Dashed);
+      line(setup.sweepLevel, css('--warn'), 'Liquidez varrida', LS.Dotted);
+      line(setup.chochLevel, css('--text-3'), 'CHoCH', LS.Dotted);
+    }
     if (setup.range && setup.spring) {
       line(setup.range.hi, css('--text-3'), 'Topo da faixa', LS.LargeDashed);
       line(setup.range.lo, css('--text-3'), 'Fundo da faixa', LS.LargeDashed);
     }
-    const from = Math.max(0, Math.min(setup.sweepIdx - 80, cs.length - 160));
+    const startIdx = setup.sweepIdx ?? setup.swingL1?.i ?? setup.pullbackIdx ?? setup.i;
+    const from = Math.max(0, Math.min(startIdx - 80, cs.length - 160));
     const to = Math.max(setup.result.endIdx + 20, setup.i + 40);
     chart.timeScale().setVisibleLogicalRange({ from, to: Math.min(to, cs.length + 10) });
   } else {
