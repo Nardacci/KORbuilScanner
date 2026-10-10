@@ -71,3 +71,20 @@ test('análise com todos os métodos e consenso', () => {
   const c = consensus(all);
   assert.ok(c.long.length + c.short.length <= METHOD_IDS.length);
 });
+
+test('Onda 34 sai no fechamento do outro lado da onda; Dow sai quando a sequência de fundos se desfaz', () => {
+  let onda = 0, bos = 0;
+  for (const seed of [1, 2, 3]) {
+    const cs = synthetic(3000, seed);
+    const w = waves(cs);
+    for (const s of detectWith('onda34', cs, OFF)) if (s.result.status === 'onda') {
+      onda++;
+      const k = s.result.exitIdx;
+      if (s.side === 'long') assert.ok(cs[k].c < w.lo[k], 'compra sai com fechamento abaixo da onda');
+      else assert.ok(cs[k].c > w.hi[k], 'venda sai com fechamento acima da onda');
+      assert.ok(s.result.R > -1.2);
+    }
+    for (const s of detectWith('dow', cs, OFF)) if (s.result.status === 'bos') bos++;
+  }
+  assert.ok(onda > 0 && bos > 0, `onda=${onda} bos=${bos}`);
+});

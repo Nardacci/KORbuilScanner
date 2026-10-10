@@ -236,7 +236,9 @@ export function simulate(cs, st, o) {
   const notePivot = (p) => {
     if (p > anchor && isPivotLow(cs, p, k0)) lastLow = cs[p].l;
   };
-  if (o.exitOnBOS) for (let p = anchor + 1; p <= st.i - k0; p++) notePivot(p);
+  // Dow sai sempre que a sequência de fundos se desfaz; nos outros métodos é opcional.
+  const bosExit = o.exitOnBOS || st.exitOnStructure;
+  if (bosExit) for (let p = anchor + 1; p <= st.i - k0; p++) notePivot(p);
   const res = { status: 'pendente', fillIdx: -1, exitIdx: -1, exitPrice: null, R: null, endIdx: cs.length - 1 };
   // Entrada a mercado no fechamento do candle do sinal (Dow, Onda 34).
   if (st.market) { res.fillIdx = st.i; res.status = 'aberta'; }
@@ -247,7 +249,7 @@ export function simulate(cs, st, o) {
   };
   for (let k = st.i + 1; k < cs.length; k++) {
     const c = cs[k];
-    if (o.exitOnBOS) notePivot(k - k0);
+    if (bosExit) notePivot(k - k0);
     if (res.fillIdx < 0) {
       if (k - st.i > o.expiry) { res.status = 'expirada'; res.endIdx = k; return res; }
       if (c.l <= entry) {
@@ -261,7 +263,9 @@ export function simulate(cs, st, o) {
     } else {
       if (c.l <= stop) { close(k, Math.min(stop, c.o), 'perda'); return res; }
       if (c.h >= target) { close(k, Math.max(target, c.o), 'ganho'); return res; }
-      if (o.exitOnBOS && lastLow !== null && c.c < lastLow) { close(k, c.c, 'bos'); return res; }
+      // Onda 34: um fechamento do outro lado da onda encerra a tendência que justificou a entrada.
+      if (st.exitLevels && c.c < st.exitLevels[k]) { close(k, c.c, 'onda'); return res; }
+      if (bosExit && lastLow !== null && c.c < lastLow) { close(k, c.c, 'bos'); return res; }
       if (k - res.fillIdx >= o.maxBarsInTrade) { close(k, c.c, 'tempo'); return res; }
     }
   }

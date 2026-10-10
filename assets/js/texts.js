@@ -31,6 +31,7 @@ export const STATUS = {
   perdida: 'Foi ao alvo sem executar',
   cancelada: 'Cancelada (andou demais sem executar)',
   bos: 'Saída no BOS contra',
+  onda: 'Saída: fechou do outro lado da onda',
 };
 
 export function rangeZone(pos) {

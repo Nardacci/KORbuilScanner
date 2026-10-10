@@ -7,6 +7,7 @@
 //   2. Recuo: o preço tocou a onda nos últimos 3 candles sem fechar abaixo dela.
 //   3. Retomada: o primeiro candle verde depois do recuo. Entrada a mercado no fechamento,
 //      stop abaixo da mínima do recuo (ou da onda), alvo na próxima liquidez ou 3× o risco.
+//   Saída antecipada: candle fechando abaixo da onda (vermelho), porque a tendência acabou.
 
 import { ema, isPivotHigh } from './indicators.js';
 import { findTarget } from './engine.js';
@@ -61,6 +62,7 @@ export function detectOndaLong(cs, o, ind) {
       anchorIdx: lowIdx,
       pullbackIdx: lowIdx,
       waveHi: w.hi[i], waveLo: w.lo[i],
+      exitLevels: w.lo, // sai quando um candle fechar abaixo da onda
       volRatio: ind.volAvg[i] > 0 ? c.v / ind.volAvg[i] : 0,
       rsi: ind.rsi[i],
     });
