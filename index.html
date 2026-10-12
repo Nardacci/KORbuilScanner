@@ -6,9 +6,9 @@
   <title>KORbuild Scanner</title>
   <meta name="description" content="Scanner de futuros perpétuos da Binance com setups SMC + Wyckoff e backtest.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101418'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' stroke='%2336c98e' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="assets/css/app.css">
-  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js"></script>
-  <script type="module" src="assets/js/app.js"></script>
+  <link rel="stylesheet" href="assets/css/app.css?v=2026.10.12-1854">
+  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js?v=2026.10.12-1854"></script>
+  <script type="module" src="assets/js/app.js?v=2026.10.12-1854"></script>
 </head>
 <body>
   <header class="top">
@@ -68,7 +68,7 @@
           <table class="grid">
             <thead>
               <tr>
-                <th>Ativo</th><th>Sinal</th><th title="S = SMC + Wyckoff · D = Dow · O = Onda 34">Métodos</th><th>Situação</th><th class="num">Preço agora</th>
+                <th>Ativo</th><th>Sinal</th><th title="S = SMC + Wyckoff · D = Dow · O = Onda 34 · P = Price action · I = Ichimoku">Métodos</th><th>Situação</th><th class="num">Preço agora</th>
                 <th class="num">Entrada</th><th class="num">Stop</th><th class="num">Alvo</th>
                 <th class="num">R:R</th><th>Tendência</th><th class="num">RSI</th><th class="num">Nota</th>
               </tr>
@@ -173,7 +173,7 @@
           <h3>Comparar os métodos</h3>
           <button id="bt-compare-methods" class="ghost">Comparar os métodos</button>
         </div>
-        <p class="muted small-note">Roda SMC + Wyckoff, Dow e Onda 34 nos mesmos ativos e período, com a mesma configuração.</p>
+        <p class="muted small-note">Roda todos os métodos nos mesmos ativos e período, com a mesma configuração.</p>
         <div class="table-wrap" id="bt-methods-wrap" hidden>
           <table class="grid small">
             <thead><tr><th>Método</th><th class="num">Operações</th><th class="num">Acerto</th><th class="num">R médio</th><th class="num">Total</th><th class="num">Fator de lucro</th><th class="num">R médio no cego</th><th class="num">Pior sequência</th></tr></thead>
@@ -312,6 +312,15 @@
       <b>verdes</b> (fechou acima da onda), <b>vermelhos</b> (abaixo) ou <b>azuis</b> (dentro: ficar de fora).
       O sinal de compra pede onda subindo, recuo até a onda sem fechar abaixo dela e o <b>primeiro candle verde</b> depois do recuo.
       Entrada a mercado no fechamento, stop abaixo do recuo e da onda.</p>
+      <h2>Price action (estilo Al Brooks)</h2>
+      <p>Com a <b>média de 20 subindo</b> e o preço recuando até ela, procura um candle de rejeição: <b>pin bar / martelo</b>
+      (pavio longo embaixo, fechamento no alto) ou <b>engolfo de alta</b>. A entrada é uma <b>ordem de stop acima da máxima</b> do candle de sinal,
+      válida por 3 candles: só entra se o preço confirmar. Stop abaixo do candle de sinal; alvo na próxima liquidez ou 2× o risco.</p>
+      <h2>Ichimoku</h2>
+      <p>Parâmetros 9, 26, 52. Dois gatilhos de compra: <b>rompimento da nuvem</b> (fecha acima da nuvem com Tenkan acima da Kijun,
+      Chikou livre e nuvem futura de alta) e <b>recuo na Kijun</b> (acima da nuvem, toca a Kijun e fecha acima dela).
+      Entrada no fechamento, stop abaixo da Kijun ou da mínima recente, saída se fechar abaixo da Kijun. No gráfico: Tenkan (azul),
+      Kijun (vermelha), nuvem projetada 26 candles à frente (Senkou A verde, Senkou B vermelha) e Chikou (cinza, tracejada).</p>
       <h2>COMPRA × COMPRADO</h2>
       <p><b>COMPRA / VENDA</b> = sinal para agir: sinal novo (marcado como <b>novo</b>, no último candle fechado) ou ordem limite pendente.
       <b>COMPRADO / VENDIDO</b> (borda tracejada) = posição que um sinal <b>anterior</b> abriu e que ainda não bateu stop, alvo ou saída.
@@ -320,7 +329,7 @@
       <p><b>Onda 34:</b> sai quando um candle fecha do outro lado da onda (vermelho numa compra, verde numa venda).
       <b>Dow:</b> sai quando o preço fecha abaixo de um fundo formado depois da entrada (a sequência de fundos ascendentes se desfez).</p>
       <h2>Coluna "Métodos" no scanner</h2>
-      <p>Uma letra por método (S = SMC + Wyckoff, D = Dow, O = Onda 34): verde = compra, vermelho = venda, cinza = aguardar.
+      <p>Uma letra por método (S = SMC + Wyckoff, D = Dow, O = Onda 34, P = Price action, I = Ichimoku): verde = compra, vermelho = venda, cinza = aguardar.
       Quando 2 ou mais concordam, aparece o placar. Concordância não é garantia: compare os métodos no backtest.</p>
       <h2>Refinamentos (Configurações)</h2>
       <ul>
@@ -347,6 +356,7 @@
   <footer class="foot">
     <p>Ferramenta de estudo, não é recomendação de investimento. Dados públicos da Binance, buscados direto do seu navegador.</p>
     <p>Gráficos: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>, Copyright (c) 2023 TradingView, Inc.</p>
+    <p>Versão <span id="versao">2026.10.12-1854</span></p>
   </footer>
 </body>
 </html>

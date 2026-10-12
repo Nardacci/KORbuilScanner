@@ -1,14 +1,16 @@
-import { DEFAULTS, HTF } from './engine.js';
-import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js';
-import { dowState } from './dow.js';
-import { ondaState } from './onda34.js';
-import { backtestSymbol, summarize, metrics } from './backtest.js';
-import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js';
-import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js';
+import { DEFAULTS, HTF } from './engine.js?v=2026.10.12-1854';
+import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.12-1854';
+import { dowState } from './dow.js?v=2026.10.12-1854';
+import { ondaState } from './onda34.js?v=2026.10.12-1854';
+import { ichimokuState } from './ichimoku.js?v=2026.10.12-1854';
+import { paState } from './priceaction.js?v=2026.10.12-1854';
+import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.12-1854';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.12-1854';
+import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.12-1854';
 import {
   fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
   describeSetup, describeStatus, describeWait,
-} from './texts.js';
+} from './texts.js?v=2026.10.12-1854';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -77,7 +79,8 @@ let detailMethod = 'smc'; // método mostrado no detalhe
 // Visão de um ativo por um método: setups do método + contexto comum.
 const aOf = (r, m) => ({ ...r.all.methods[m], context: r.all.context, structure: r.all.structure });
 // Contexto específico do método (para o texto de "aguardar").
-const methodCtx = (r, m) => (m === 'dow' ? dowState(r.cs, cfg.pivot) : m === 'onda34' ? ondaState(r.cs) : null);
+const CTX = { dow: (cs) => dowState(cs, cfg.pivot), onda34: ondaState, ichimoku: ichimokuState, pa: paState };
+const methodCtx = (r, m) => (CTX[m] ? CTX[m](r.cs) : null);
 
 async function runScan(auto = false) {
   const tf = $('#sc-tf').value;

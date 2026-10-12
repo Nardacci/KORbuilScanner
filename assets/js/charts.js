@@ -1,8 +1,10 @@
 // Gráficos com a biblioteca Lightweight Charts (TradingView), carregada em
 // vendor/ como script global `LightweightCharts`.
 
-import { fmtPrice } from './texts.js';
-import { waves, grab } from './onda34.js';
+import { fmtPrice } from './texts.js?v=2026.10.12-1854';
+import { waves, grab } from './onda34.js?v=2026.10.12-1854';
+import { ichimoku } from './ichimoku.js?v=2026.10.12-1854';
+import { ema } from './indicators.js?v=2026.10.12-1854';
 
 const LW = () => window.LightweightCharts;
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -59,6 +61,25 @@ export function renderSymbolChart(el, cs, setup, struct, method = setup?.method 
     if (onda && colors[i]) { bar.color = GRAB[colors[i]]; bar.wickColor = GRAB[colors[i]]; }
     return bar;
   }));
+  const addLine = (data, color, width, title = '', style = 0) => {
+    const ls = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, title });
+    ls.setData(data.filter((x) => Number.isFinite(x.value)));
+  };
+  if (method === 'ichimoku') {
+    const ich = ichimoku(cs);
+    const step = cs.length > 1 ? cs[1].t - cs[0].t : 0;
+    const timeAt = (i) => sec(i < cs.length ? cs[i].t : cs[cs.length - 1].t + (i - cs.length + 1) * step);
+    addLine(cs.map((c, i) => ({ time: sec(c.t), value: ich.tenkan[i] })), css('--accent'), 1, 'Tenkan');
+    addLine(cs.map((c, i) => ({ time: sec(c.t), value: ich.kijun[i] })), css('--down'), 2, 'Kijun');
+    // Nuvem projetada 26 candles à frente.
+    addLine(cs.map((c, i) => ({ time: timeAt(i + 26), value: ich.spanA[i] })), 'rgba(46, 189, 133, .75)', 1, 'Senkou A');
+    addLine(cs.map((c, i) => ({ time: timeAt(i + 26), value: ich.spanB[i] })), 'rgba(246, 70, 93, .75)', 1, 'Senkou B');
+    addLine(cs.slice(26).map((c, i) => ({ time: sec(cs[i].t), value: c.c })), css('--text-3'), 1, 'Chikou', 2);
+  }
+  if (method === 'pa') {
+    const e20 = ema(cs.map((c) => c.c), 20);
+    addLine(cs.map((c, i) => ({ time: sec(c.t), value: e20[i] })), css('--warn'), 2, 'MME 20');
+  }
   if (onda) {
     for (const [key, title] of [['hi', 'Onda máx.'], ['mid', 'Onda'], ['lo', 'Onda mín.']]) {
       const ls = chart.addLineSeries({ color: css('--warn'), lineWidth: key === 'mid' ? 2 : 1, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, title: key === 'mid' ? 'EMA 34' : '' });
@@ -92,6 +113,10 @@ export function renderSymbolChart(el, cs, setup, struct, method = setup?.method 
       markers.push({ time: sec(cs[setup.swingH.i].t), position: above, color: css('--text-2'), shape: 'circle', text: long ? 'Topo' : 'Fundo', size: 0.7 });
       markers.push({ time: sec(cs[setup.swingL2.i].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: long ? 'Fundo mais alto' : 'Topo mais baixo' });
       markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: long ? 'Rompeu o topo' : 'Perdeu o fundo' });
+    } else if (setup.method === 'ichimoku') {
+      markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: setup.trigger === 'nuvem' ? 'Rompeu a nuvem' : 'Recuo na Kijun' });
+    } else if (setup.method === 'pa') {
+      markers.push({ time: sec(cs[setup.i].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: setup.pattern === 'pin' ? 'Pin bar' : 'Engolfo' });
     } else if (setup.method === 'onda34') {
       markers.push({ time: sec(cs[setup.pullbackIdx].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Recuo na onda' });
       if (setup.pullbackIdx !== setup.i) markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: 'Retomada' });
@@ -101,8 +126,8 @@ export function renderSymbolChart(el, cs, setup, struct, method = setup?.method 
       markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: 'CHoCH' });
     }
     const r = setup.result;
-    if (r.fillIdx >= 0 && !setup.market) markers.push({ time: sec(cs[r.fillIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--text-1'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Entrada' });
-    if (r.exitIdx >= 0) markers.push({ time: sec(cs[r.exitIdx].t), position: 'inBar', color: r.R > 0 ? up : down, shape: 'circle', text: r.status === 'ganho' ? 'Alvo' : r.status === 'perda' ? 'Stop' : r.status === 'bos' ? 'Saída BOS' : r.status === 'onda' ? 'Saída onda' : 'Saída' });
+    if (r.fillIdx >= 0 && !setup.market && r.fillIdx !== setup.i) markers.push({ time: sec(cs[r.fillIdx].t), position: long ? 'belowBar' : 'aboveBar', color: css('--text-1'), shape: long ? 'arrowUp' : 'arrowDown', text: 'Entrada' });
+    if (r.exitIdx >= 0) markers.push({ time: sec(cs[r.exitIdx].t), position: 'inBar', color: r.R > 0 ? up : down, shape: 'circle', text: r.status === 'ganho' ? 'Alvo' : r.status === 'perda' ? 'Stop' : r.status === 'bos' ? 'Saída BOS' : r.status === 'onda' ? 'Saída onda' : r.status === 'kijun' ? 'Saída Kijun' : 'Saída' });
 
     line(setup.entry, css('--accent'), `Entrada ${fmtPrice(setup.entry)}`, LS.Solid, 2);
     line(setup.stop, down, 'Stop', LS.Solid, 2);

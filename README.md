@@ -1,7 +1,7 @@
 # KORbuild Scanner
 
-Página web que analisa os futuros perpétuos USDT da Binance com três métodos — **SMC + Wyckoff**,
-**Teoria de Dow** e **Onda 34 (Raghee Horner)** — e mostra as oportunidades de compra e venda,
+Página web que analisa os futuros perpétuos USDT da Binance com cinco métodos — **SMC + Wyckoff**,
+**Teoria de Dow**, **Onda 34 (Raghee Horner)**, **Price action** e **Ichimoku** — e mostra as oportunidades de compra e venda,
 com gráfico marcado, consenso entre os métodos e backtest.
 
 Tudo roda no navegador: a página busca os dados públicos da Binance direto do computador de quem usa
@@ -44,7 +44,12 @@ então o backtest não olha o futuro (há teste automático para isso).
 - **Onda 34 (Raghee Horner)**: EMAs de 34 das máximas, fechamentos e mínimas; candles GRaB (verde, vermelho, azul).
   Compra no primeiro candle verde depois de um recuo até a onda, com a onda subindo. Candles azuis = ficar de fora.
 
-O scanner mostra o sinal do método escolhido e uma coluna com o estado dos três (S, D, O). O detalhe tem uma aba
+- **Price action** (estilo Al Brooks): recuo até a média de 20 em tendência e candle de rejeição (pin bar ou engolfo);
+  entrada por ordem de stop acima da máxima do candle de sinal, válida por 3 candles.
+- **Ichimoku** (9, 26, 52): rompimento da nuvem com Tenkan > Kijun, Chikou livre e nuvem futura a favor, ou recuo na Kijun
+  acima da nuvem. Saída se fechar do outro lado da Kijun.
+
+O scanner mostra o sinal do método escolhido e uma coluna com o estado de todos (S, D, O, P, I). O detalhe tem uma aba
 por método, e o backtest tem o botão *Comparar os métodos*.
 
 ## Estrutura
@@ -55,6 +60,8 @@ assets/css/app.css       estilo
 assets/js/engine.js      motor SMC + Wyckoff, simulação e execução genérica dos métodos
 assets/js/dow.js         Teoria de Dow
 assets/js/onda34.js      Onda 34 e candles GRaB
+assets/js/priceaction.js Price action (pin bar, engolfo)
+assets/js/ichimoku.js    Ichimoku
 assets/js/methods.js     registro dos métodos e consenso
 assets/js/backtest.js    backtest e métricas
 assets/js/indicators.js  ATR, EMA, RSI, topos e fundos
@@ -72,6 +79,11 @@ tests/                   testes do motor (Node 18+)
 python3 -m http.server 8000   # e abra http://localhost:8000
 npm test                       # testes do motor
 ```
+
+## Versão dos arquivos (cache do navegador)
+
+Antes de publicar, rode `node scripts/versao.mjs`. Ele carimba uma versão (`?v=...`) em todos os endereços de
+arquivos da página, para o navegador baixar os arquivos novos, e mostra o número no rodapé.
 
 ## Publicar no GitHub Pages
 

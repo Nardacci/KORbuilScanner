@@ -9,8 +9,8 @@
 //      stop abaixo da mínima do recuo (ou da onda), alvo na próxima liquidez ou 3× o risco.
 //   Saída antecipada: candle fechando abaixo da onda (vermelho), porque a tendência acabou.
 
-import { ema, isPivotHigh } from './indicators.js';
-import { findTarget } from './engine.js';
+import { ema, isPivotHigh } from './indicators.js?v=2026.10.12-1854';
+import { findTarget } from './engine.js?v=2026.10.12-1854';
 
 export function waves(cs) {
   return {

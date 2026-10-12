@@ -1,10 +1,10 @@
 // Backtest: roda o motor no histórico, uma posição por ativo de cada vez,
 // e calcula as métricas separando o período de ajuste do período "cego".
 
-import { DEFAULTS, makeHtfTrend } from './engine.js';
-import { detectWith } from './methods.js';
+import { DEFAULTS, makeHtfTrend } from './engine.js?v=2026.10.12-1854';
+import { detectWith } from './methods.js?v=2026.10.12-1854';
 
-const CLOSED = new Set(['ganho', 'perda', 'tempo', 'bos', 'onda']);
+const CLOSED = new Set(['ganho', 'perda', 'tempo', 'bos', 'onda', 'kijun']);
 
 // Operações de um ativo. `startT` descarta setups antes do início pedido
 // (os candles anteriores servem só de aquecimento).

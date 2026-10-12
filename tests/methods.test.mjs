@@ -88,3 +88,66 @@ test('Onda 34 sai no fechamento do outro lado da onda; Dow sai quando a sequênc
   }
   assert.ok(onda > 0 && bos > 0, `onda=${onda} bos=${bos}`);
 });
+
+import { ichimoku, cloudAt } from '../assets/js/ichimoku.js';
+import { pattern } from '../assets/js/priceaction.js';
+
+for (const m of ['pa', 'ichimoku']) {
+  test(`${m}: preços coerentes e sem olhar o futuro`, () => {
+    let n = 0;
+    for (const seed of [1, 2, 3, 4]) {
+      const cs = synthetic(3000, seed);
+      for (const s of detectWith(m, cs, OFF)) {
+        n++;
+        if (s.side === 'long') assert.ok(s.stop < s.entry && s.entry < s.target, key(s));
+        else assert.ok(s.target < s.entry && s.entry < s.stop, key(s));
+        assert.ok(s.rr >= 2 - 1e-9);
+      }
+    }
+    assert.ok(n > 10, `poucos sinais: ${n}`);
+    const cs = synthetic(2500, 17);
+    const full = detectWith(m, cs, OFF);
+    for (const cut of [900, 1700, 2300]) {
+      const part = detectWith(m, cs.slice(0, cut), OFF);
+      assert.deepEqual(part.map(key), full.filter((s) => s.i < cut).map(key), `corte em ${cut}`);
+    }
+    const bt = backtestSymbol('X', cs, [], OFF, 0, m);
+    assert.ok(bt.trades.every((t) => Number.isFinite(t.R)));
+  });
+}
+
+test('Ichimoku: compra fecha acima da nuvem com Tenkan acima da Kijun; sai abaixo da Kijun', () => {
+  let kij = 0;
+  for (const seed of [1, 2, 3]) {
+    const cs = synthetic(3000, seed);
+    const ich = ichimoku(cs);
+    for (const s of detectWith('ichimoku', cs, OFF)) {
+      const cl = cloudAt(ich, s.i);
+      if (s.side === 'long') {
+        assert.ok(cs[s.i].c > cl.top && ich.tenkan[s.i] > ich.kijun[s.i]);
+        if (s.result.status === 'kijun') { kij++; assert.ok(cs[s.result.exitIdx].c < ich.kijun[s.result.exitIdx]); }
+      } else {
+        assert.ok(cs[s.i].c < cl.bottom && ich.tenkan[s.i] < ich.kijun[s.i]);
+      }
+    }
+  }
+  assert.ok(kij > 0);
+});
+
+test('Price action: padrão no candle de sinal e ordem de stop acima da máxima', () => {
+  const pin = [{ o: 10, h: 10.2, l: 10, c: 10.1 }, { o: 10, h: 10.1, l: 9, c: 10.05 }];
+  assert.equal(pattern(pin, 1), 'pin');
+  const eng = [{ o: 10, h: 10.1, l: 9.6, c: 9.7 }, { o: 9.65, h: 10.3, l: 9.6, c: 10.2 }];
+  assert.equal(pattern(eng, 1), 'engolfo');
+  const cs = synthetic(3000, 6);
+  for (const s of detectWith('pa', cs, OFF)) {
+    if (s.side === 'long') assert.ok(s.entry > cs[s.i].h);
+    else assert.ok(s.entry < cs[s.i].l);
+    const r = s.result;
+    if (r.fillIdx >= 0) {
+      assert.ok(r.fillIdx > s.i && r.fillIdx <= s.i + 3, 'executa nos 3 candles seguintes');
+      if (s.side === 'long') assert.ok(cs[r.fillIdx].h >= s.entry);
+      else assert.ok(cs[r.fillIdx].l <= s.entry);
+    }
+  }
+});
