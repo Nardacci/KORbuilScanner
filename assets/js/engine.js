@@ -18,7 +18,7 @@
 // Marcas extras: "spring" quando o fundo varrido é o fundo de uma faixa
 // lateral (Wyckoff), volume alto na varredura e alinhamento com o tempo maior.
 
-import { atr, ema, sma, rsi, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.12-1854';
+import { atr, ema, sma, rsi, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.12-2153';
 
 export const DEFAULTS = {
   pivot: 3,            // candles de cada lado para confirmar topo/fundo
@@ -326,7 +326,7 @@ export function runDetector(cs, opts, htfTrendAt, detector, method) {
 
 // Campos de preço que precisam ser desvirados nas vendas.
 const PRICE_FIELDS = ['entry', 'stop', 'target', 'sweepLevel', 'sweepLow', 'chochLevel', 'obProx', 'obDist', 'waveHi', 'waveLo',
-  'tenkan', 'kijun', 'ema20'];
+  'tenkan', 'kijun', 'ema20', 'mssLevel'];
 const POINT_FIELDS = ['swingL1', 'swingH', 'swingL2'];
 
 function toReal(st, side, htf, aligned) {
@@ -335,6 +335,10 @@ function toReal(st, side, htf, aligned) {
   for (const k of PRICE_FIELDS) if (k in st) r[k] = f(st[k]);
   for (const k of POINT_FIELDS) if (st[k]) r[k] = { ...st[k], p: f(st[k].p) };
   if (side === 'short' && 'waveHi' in st) { r.waveHi = -st.waveLo; r.waveLo = -st.waveHi; }
+  if ('zoneTop' in st) {
+    r.zoneTop = side === 'long' ? st.zoneTop : -st.zoneBottom;
+    r.zoneBottom = side === 'long' ? st.zoneBottom : -st.zoneTop;
+  }
   if ('cloudTop' in st) {
     r.cloudTop = side === 'long' ? st.cloudTop : -st.cloudBottom;
     r.cloudBottom = side === 'long' ? st.cloudBottom : -st.cloudTop;
@@ -351,6 +355,7 @@ function toReal(st, side, htf, aligned) {
 export function scoreOf(s) {
   let sc = Math.min(s.rr, 5) * 10;
   if (s.spring) sc += 15;
+  if (s.swept) sc += 10;
   if (s.volRatio >= DEFAULTS.volClimax) sc += 10;
   if (s.aligned) sc += 15;
   if (s.htf === 'lateral') sc += 5;

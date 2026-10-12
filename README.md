@@ -1,7 +1,7 @@
 # KORbuild Scanner
 
-Página web que analisa os futuros perpétuos USDT da Binance com cinco métodos — **SMC + Wyckoff**,
-**Teoria de Dow**, **Onda 34 (Raghee Horner)**, **Price action** e **Ichimoku** — e mostra as oportunidades de compra e venda,
+Página web que analisa os futuros perpétuos USDT da Binance com seis métodos — **SMC + Wyckoff**,
+**Teoria de Dow**, **Onda 34 (Raghee Horner)**, **Price action**, **Ichimoku** e **ICT (confluência)** — e mostra as oportunidades de compra e venda,
 com gráfico marcado, consenso entre os métodos e backtest.
 
 Tudo roda no navegador: a página busca os dados públicos da Binance direto do computador de quem usa
@@ -49,7 +49,11 @@ então o backtest não olha o futuro (há teste automático para isso).
 - **Ichimoku** (9, 26, 52): rompimento da nuvem com Tenkan > Kijun, Chikou livre e nuvem futura a favor, ou recuo na Kijun
   acima da nuvem. Saída se fechar do outro lado da Kijun.
 
-O scanner mostra o sinal do método escolhido e uma coluna com o estado de todos (S, D, O, P, I). O detalhe tem uma aba
+- **ICT (confluência)**: contexto (impulso que rompe a estrutura), local (order block ou FVG desse impulso, na metade
+  barata), gatilho (mudança de estrutura interna dentro da zona) e alvo (liquidez oposta). Varredura de liquidez na
+  reação soma pontos. Sem sinal, lista as zonas em formação com o preço do gatilho.
+
+O scanner mostra o sinal do método escolhido e uma coluna com o estado de todos (S, D, O, P, I, C). O detalhe tem uma aba
 por método, e o backtest tem o botão *Comparar os métodos*.
 
 ## Estrutura
@@ -62,6 +66,7 @@ assets/js/dow.js         Teoria de Dow
 assets/js/onda34.js      Onda 34 e candles GRaB
 assets/js/priceaction.js Price action (pin bar, engolfo)
 assets/js/ichimoku.js    Ichimoku
+assets/js/ict.js         ICT (confluência): zonas, MSS e lista em formação
 assets/js/methods.js     registro dos métodos e consenso
 assets/js/backtest.js    backtest e métricas
 assets/js/indicators.js  ATR, EMA, RSI, topos e fundos

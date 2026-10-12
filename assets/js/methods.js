@@ -1,18 +1,20 @@
 // Registro dos métodos de análise. Cada método fornece um detector de compras
 // (as vendas saem dos candles espelhados) e usa a mesma simulação e o mesmo backtest.
 
-import { analyze, detectSmcLong, runDetector } from './engine.js?v=2026.10.12-1854';
-import { detectDowLong } from './dow.js?v=2026.10.12-1854';
-import { detectOndaLong } from './onda34.js?v=2026.10.12-1854';
-import { detectIchimokuLong } from './ichimoku.js?v=2026.10.12-1854';
-import { detectPaLong } from './priceaction.js?v=2026.10.12-1854';
+import { analyze, detectSmcLong, runDetector } from './engine.js?v=2026.10.12-2153';
+import { detectDowLong } from './dow.js?v=2026.10.12-2153';
+import { detectOndaLong } from './onda34.js?v=2026.10.12-2153';
+import { detectIchimokuLong } from './ichimoku.js?v=2026.10.12-2153';
+import { detectPaLong } from './priceaction.js?v=2026.10.12-2153';
+import { detectIctLong } from './ict.js?v=2026.10.12-2153';
 
 export const METHODS = {
-  smc: { id: 'smc', name: 'SMC + Wyckoff', short: 'SMC', detector: detectSmcLong },
-  dow: { id: 'dow', name: 'Teoria de Dow', short: 'Dow', detector: detectDowLong },
-  onda34: { id: 'onda34', name: 'Onda 34 (Raghee Horner)', short: 'Onda', detector: detectOndaLong },
-  pa: { id: 'pa', name: 'Price action', short: 'PA', detector: detectPaLong },
-  ichimoku: { id: 'ichimoku', name: 'Ichimoku', short: 'Ichimoku', detector: detectIchimokuLong },
+  smc: { id: 'smc', letter: 'S', name: 'SMC + Wyckoff', short: 'SMC', detector: detectSmcLong },
+  dow: { id: 'dow', letter: 'D', name: 'Teoria de Dow', short: 'Dow', detector: detectDowLong },
+  onda34: { id: 'onda34', letter: 'O', name: 'Onda 34 (Raghee Horner)', short: 'Onda', detector: detectOndaLong },
+  pa: { id: 'pa', letter: 'P', name: 'Price action', short: 'PA', detector: detectPaLong },
+  ichimoku: { id: 'ichimoku', letter: 'I', name: 'Ichimoku', short: 'Ichimoku', detector: detectIchimokuLong },
+  ict: { id: 'ict', letter: 'C', name: 'ICT (confluência)', short: 'ICT', detector: detectIctLong },
 };
 export const METHOD_IDS = Object.keys(METHODS);
 

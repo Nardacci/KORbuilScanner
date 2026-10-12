@@ -120,8 +120,24 @@ function describePa(s, cs, htfName) {
   ];
 }
 
+function describeIct(s, cs, htfName) {
+  const long = s.side === 'long';
+  const zona = s.zoneType === 'FVG' ? 'FVG (desequilíbrio entre candles)' : 'order block';
+  return [
+    `<b>1. Contexto:</b> um impulso ${long ? 'de alta' : 'de baixa'} rompeu a estrutura (BOS) em ${fmtDate(cs[s.zoneCreated].t)} e deixou uma zona de ` +
+      `${long ? 'demanda' : 'oferta'}: ${zona} entre ${fmtPrice(s.zoneBottom)} e ${fmtPrice(s.zoneTop)}.`,
+    `<b>2. Local:</b> em ${fmtDate(cs[s.touchIdx].t)} o preço voltou à zona, que fica na metade ${long ? 'barata (desconto)' : 'cara (prêmio)'} do impulso.` +
+      (s.swept ? ` Na reação ele <b>varreu a liquidez</b> de um ${long ? 'fundo' : 'topo'} anterior.` : ''),
+    `<b>3. Gatilho (MSS):</b> em ${fmtDate(cs[s.i].t)} fechou ${long ? 'acima do último topo interno' : 'abaixo do último fundo interno'} (${fmtPrice(s.mssLevel)}): ` +
+      'a estrutura virou dentro da zona, como a confirmação num gráfico menor.',
+    planText(s) + ` O stop fica ${long ? 'abaixo da mínima' : 'acima da máxima'} feita na zona.`,
+    contextText(s, htfName),
+  ];
+}
+
 // Texto do setup ativo (ou de um setup histórico).
 export function describeSetup(s, cs, tf, htfName) {
+  if (s.method === 'ict') return describeIct(s, cs, htfName);
   if (s.method === 'ichimoku') return describeIchimoku(s, cs, htfName);
   if (s.method === 'pa') return describePa(s, cs, htfName);
   if (s.method === 'dow') return describeDow(s, cs, htfName);
@@ -189,6 +205,24 @@ export function describeWait(ctx, tf, htfName, method = 'smc', mctx = null) {
     L.push(`<b>Onda 34:</b> último candle ${cor}; onda ${mctx.slope}. Nos últimos 10 candles: ${mctx.counts.g} verdes, ${mctx.counts.r} vermelhos, ${mctx.counts.b} azuis.`);
     L.push(mctx.counts.b >= 5 ? 'Muitos candles azuis: mercado sem direção. Pelo método: <b>ficar de fora</b>.'
       : 'Sem recuo até a onda seguido de retomada a favor da tendência. Pelo método: <b>aguardar</b>.');
+  } else if (method === 'ict' && mctx) {
+    const price = ctx.price;
+    const near = mctx
+      .filter((z) => (z.side === 'long' ? z.bottom < price : z.top > price) || z.touched)
+      .sort((a, b) => Math.abs((a.top + a.bottom) / 2 - price) - Math.abs((b.top + b.bottom) / 2 - price))
+      .slice(0, 4);
+    if (!near.length) {
+      L.push('<b>ICT:</b> nenhuma zona de demanda ou oferta válida perto do preço agora. Pelo método: <b>aguardar</b>.');
+    } else {
+      L.push('<b>ICT, zonas em formação</b> (o gatilho ainda não veio):');
+      for (const z of near) {
+        const long = z.side === 'long';
+        const nome = `${long ? 'Demanda' : 'Oferta'} (${z.type}) em ${fmtPrice(z.bottom)} – ${fmtPrice(z.top)}`;
+        L.push(z.touched
+          ? `• ${nome}: <b>o preço já está na zona</b>. ${long ? 'Compra' : 'Venda'} se fechar ${long ? 'acima' : 'abaixo'} de <b>${fmtPrice(z.mss)}</b>.`
+          : `• ${nome}: se o preço chegar na zona, esperar a virada (MSS) para ${long ? 'comprar' : 'vender'}.`);
+      }
+    }
   } else if (method === 'ichimoku' && mctx) {
     const m = mctx;
     L.push(`<b>Ichimoku:</b> preço <b>${m.pos}</b> da nuvem; Tenkan ${m.tk} da Kijun (${fmtPrice(m.kijun)}); Chikou ${m.chikou} do preço de 26 candles atrás; ` +

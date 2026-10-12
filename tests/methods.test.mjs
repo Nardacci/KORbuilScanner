@@ -151,3 +151,37 @@ test('Price action: padrão no candle de sinal e ordem de stop acima da máxima'
     }
   }
 });
+
+import { ictZones } from '../assets/js/ict.js';
+import { atr as atrFn } from '../assets/js/indicators.js';
+
+test('ICT: preços coerentes, sem olhar o futuro e gatilho dentro da zona', () => {
+  let n = 0;
+  for (const seed of [1, 2, 3, 4]) {
+    const cs = synthetic(3000, seed);
+    for (const s of detectWith('ict', cs, OFF)) {
+      n++;
+      if (s.side === 'long') {
+        assert.ok(s.stop < s.entry && s.entry < s.target, key(s));
+        assert.ok(cs[s.i].c > s.mssLevel, 'MSS: fechou acima do topo interno');
+        assert.ok(s.zoneBottom <= s.zoneTop);
+        assert.ok(s.touchIdx > s.zoneCreated && s.touchIdx < s.i);
+        assert.ok(cs[s.touchIdx].l <= s.zoneTop, 'tocou a zona');
+      } else {
+        assert.ok(s.target < s.entry && s.entry < s.stop, key(s));
+        assert.ok(cs[s.i].c < s.mssLevel);
+        assert.ok(cs[s.touchIdx].h >= s.zoneBottom);
+      }
+      assert.ok(s.rr >= 2 - 1e-9);
+    }
+  }
+  assert.ok(n > 10, `poucos sinais: ${n}`);
+  const cs = synthetic(2500, 19);
+  const full = detectWith('ict', cs, OFF);
+  for (const cut of [900, 1700, 2300]) {
+    const part = detectWith('ict', cs.slice(0, cut), OFF);
+    assert.deepEqual(part.map(key), full.filter((s) => s.i < cut).map(key), `corte em ${cut}`);
+  }
+  const zones = ictZones(cs, { ...OFF, pivot: 3, minRR: 2, targetLookback: 300 }, atrFn(cs));
+  assert.ok(zones.every((z) => z.bottom <= z.top && (z.side === 'long' || z.side === 'short')));
+});

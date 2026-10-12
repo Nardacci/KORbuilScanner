@@ -1,16 +1,18 @@
-import { DEFAULTS, HTF } from './engine.js?v=2026.10.12-1854';
-import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.12-1854';
-import { dowState } from './dow.js?v=2026.10.12-1854';
-import { ondaState } from './onda34.js?v=2026.10.12-1854';
-import { ichimokuState } from './ichimoku.js?v=2026.10.12-1854';
-import { paState } from './priceaction.js?v=2026.10.12-1854';
-import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.12-1854';
-import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.12-1854';
-import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.12-1854';
+import { DEFAULTS, HTF } from './engine.js?v=2026.10.12-2153';
+import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.12-2153';
+import { dowState } from './dow.js?v=2026.10.12-2153';
+import { ondaState } from './onda34.js?v=2026.10.12-2153';
+import { ichimokuState } from './ichimoku.js?v=2026.10.12-2153';
+import { paState } from './priceaction.js?v=2026.10.12-2153';
+import { ictZones } from './ict.js?v=2026.10.12-2153';
+import { atr } from './indicators.js?v=2026.10.12-2153';
+import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.12-2153';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.12-2153';
+import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.12-2153';
 import {
   fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
   describeSetup, describeStatus, describeWait,
-} from './texts.js?v=2026.10.12-1854';
+} from './texts.js?v=2026.10.12-2153';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -79,7 +81,10 @@ let detailMethod = 'smc'; // método mostrado no detalhe
 // Visão de um ativo por um método: setups do método + contexto comum.
 const aOf = (r, m) => ({ ...r.all.methods[m], context: r.all.context, structure: r.all.structure });
 // Contexto específico do método (para o texto de "aguardar").
-const CTX = { dow: (cs) => dowState(cs, cfg.pivot), onda34: ondaState, ichimoku: ichimokuState, pa: paState };
+const CTX = {
+  dow: (cs) => dowState(cs, cfg.pivot), onda34: ondaState, ichimoku: ichimokuState, pa: paState,
+  ict: (cs) => ictZones(cs, { ...DEFAULTS, ...cfg }, atr(cs)),
+};
 const methodCtx = (r, m) => (CTX[m] ? CTX[m](r.cs) : null);
 
 async function runScan(auto = false) {
@@ -103,7 +108,7 @@ async function runScan(auto = false) {
       done++;
       progress('#tab-scanner', done / list.length);
       setStatus('#sc-status', `Analisando… ${done}/${list.length}`);
-      const row = { ...item, cs, all };
+      const row = { ...item, cs, all, _zones: null };
       Object.defineProperty(row, 'a', { get() { return aOf(this, scanMethod); } });
       return row;
     });
@@ -187,6 +192,11 @@ function trendCell(r) {
 
 function situation(r) {
   const s = r.a.active, c = r.a.context;
+  if (!s && scanMethod === 'ict') {
+    if (!r._zones) r._zones = methodCtx(r, 'ict');
+    const inZone = r._zones.find((z) => z.touched);
+    if (inZone) return `Na zona de ${inZone.side === 'long' ? 'demanda' : 'oferta'} · gatilho ${inZone.side === 'long' ? '>' : '<'} ${fmtPrice(inZone.mss)}`;
+  }
   if (!s) return rangeZone(c.rangePos).replace(/^na |^no /, '').replace(/^./, (x) => x.toUpperCase());
   const price = Number.isFinite(r.live) ? r.live : c.price;
   if (s.result.status === 'aberta') {
@@ -210,7 +220,7 @@ function consCell(r) {
   const dots = METHOD_IDS.map((m) => {
     const a = r.all.methods[m].active;
     const cls = a ? `${a.side}${isOpen(a, r.cs) ? ' open' : ''}` : 'wait';
-    return `<span class="cons ${cls}" title="${esc(METHODS[m].name)}: ${a ? (isOpen(a, r.cs) ? `posição aberta (${sideLabel(a.side).toLowerCase()})` : sideLabel(a.side)) : 'aguardar'}">${METHODS[m].short[0]}</span>`;
+    return `<span class="cons ${cls}" title="${esc(METHODS[m].name)}: ${a ? (isOpen(a, r.cs) ? `posição aberta (${sideLabel(a.side).toLowerCase()})` : sideLabel(a.side)) : 'aguardar'}">${METHODS[m].letter}</span>`;
   }).join('');
   const n = Math.max(c.long.length, c.short.length);
   const side = c.long.length >= c.short.length ? 'compra' : 'venda';
