@@ -1,10 +1,10 @@
 // Gráficos com a biblioteca Lightweight Charts (TradingView), carregada em
 // vendor/ como script global `LightweightCharts`.
 
-import { fmtPrice } from './texts.js?v=2026.10.12-2153';
-import { waves, grab } from './onda34.js?v=2026.10.12-2153';
-import { ichimoku } from './ichimoku.js?v=2026.10.12-2153';
-import { ema } from './indicators.js?v=2026.10.12-2153';
+import { fmtPrice } from './texts.js?v=2026.10.12-2204';
+import { waves, grab } from './onda34.js?v=2026.10.12-2204';
+import { ichimoku } from './ichimoku.js?v=2026.10.12-2204';
+import { ema } from './indicators.js?v=2026.10.12-2204';
 
 const LW = () => window.LightweightCharts;
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -42,7 +42,8 @@ let equityChart = null;
 
 // Gráfico do ativo com o setup marcado. `setup` pode ser null (só contexto).
 // `method` define as camadas extras: Onda 34 desenha a onda e pinta os candles GRaB.
-export function renderSymbolChart(el, cs, setup, struct, method = setup?.method || 'smc') {
+// `plan` (opcional): plano antecipado do ICT, desenhado como caminho projetado à frente do último candle.
+export function renderSymbolChart(el, cs, setup, struct, method = setup?.method || 'smc', plan = null) {
   if (symbolChart) { symbolChart.remove(); symbolChart = null; }
   const chart = baseChart(el, el.clientHeight || 460);
   symbolChart = chart;
@@ -159,6 +160,24 @@ export function renderSymbolChart(el, cs, setup, struct, method = setup?.method 
     chart.timeScale().setVisibleLogicalRange({ from, to: Math.min(to, cs.length + 10) });
   } else {
     chart.timeScale().setVisibleLogicalRange({ from: cs.length - 180, to: cs.length + 8 });
+  }
+  if (plan && !setup) {
+    const step = cs.length > 1 ? cs[cs.length - 1].t - cs[cs.length - 2].t : 0;
+    const n = cs.length - 1;
+    const proj = chart.addLineSeries({
+      color: plan.side === 'long' ? up : down, lineWidth: 2, lineStyle: LS.Dashed,
+      lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
+      lineType: 2, // curva suave, como o desenho à mão
+    });
+    proj.setData(plan.path.map(([k, v]) => ({ time: sec(cs[n].t + k * step), value: v })));
+    const zone = plan.side === 'long' ? 'Demanda' : 'Oferta';
+    line(plan.top, css('--text-2'), `${zone} ${plan.type}`, LS.Dashed);
+    line(plan.bottom, css('--text-2'), '', LS.Dashed);
+    line(plan.entry, css('--accent'), `${plan.touched ? 'Gatilho' : 'Gatilho ≈'} ${fmtPrice(plan.entry)}`, LS.Solid, 2);
+    line(plan.stop, down, 'Stop ≈', LS.Solid, 2);
+    line(plan.target, up, plan.targetIsLiq ? 'Alvo (liquidez)' : 'Alvo ≈ 3R', LS.Solid, 2);
+    if (plan.liq !== null) line(plan.liq, css('--warn'), plan.liqSwept ? 'Liquidez varrida' : 'Liquidez a varrer', LS.Dotted);
+    chart.timeScale().setVisibleLogicalRange({ from: cs.length - 140, to: cs.length + 26 });
   }
   markers.sort((a, b) => a.time - b.time);
   candles.setMarkers(markers);

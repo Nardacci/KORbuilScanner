@@ -6,9 +6,9 @@
   <title>KORbuild Scanner</title>
   <meta name="description" content="Scanner de futuros perpétuos da Binance com setups SMC + Wyckoff e backtest.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101418'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' stroke='%2336c98e' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="assets/css/app.css?v=2026.10.12-2153">
-  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js?v=2026.10.12-2153"></script>
-  <script type="module" src="assets/js/app.js?v=2026.10.12-2153"></script>
+  <link rel="stylesheet" href="assets/css/app.css?v=2026.10.12-2204">
+  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js?v=2026.10.12-2204"></script>
+  <script type="module" src="assets/js/app.js?v=2026.10.12-2204"></script>
 </head>
 <body>
   <header class="top">
@@ -96,6 +96,16 @@
           <div id="dt-plan" class="plan"></div>
           <div id="dt-text" class="text"></div>
         </div>
+        <section id="dt-plans-wrap" hidden>
+          <h3>Planos em formação (ICT)</h3>
+          <p class="muted small-note">Zonas ainda vivas e o que o preço precisa fazer em cada uma. Clique para ver o caminho projetado no gráfico.</p>
+          <div class="table-wrap">
+            <table class="grid small">
+              <thead><tr><th>Lado</th><th>Zona</th><th>Distância</th><th class="num">Gatilho</th><th class="num">Stop</th><th class="num">Alvo</th><th class="num">R:R</th></tr></thead>
+              <tbody id="dt-plans"></tbody>
+            </table>
+          </div>
+        </section>
         <section class="asset-bt">
           <div class="compare-head">
             <h3 id="dt-bt-title">Este setup no histórico do ativo</h3>
@@ -361,7 +371,7 @@
   <footer class="foot">
     <p>Ferramenta de estudo, não é recomendação de investimento. Dados públicos da Binance, buscados direto do seu navegador.</p>
     <p>Gráficos: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>, Copyright (c) 2023 TradingView, Inc.</p>
-    <p>Versão <span id="versao">2026.10.12-2153</span></p>
+    <p>Versão <span id="versao">2026.10.12-2204</span></p>
   </footer>
 </body>
 </html>

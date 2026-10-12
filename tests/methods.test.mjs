@@ -185,3 +185,31 @@ test('ICT: preços coerentes, sem olhar o futuro e gatilho dentro da zona', () =
   const zones = ictZones(cs, { ...OFF, pivot: 3, minRR: 2, targetLookback: 300 }, atrFn(cs));
   assert.ok(zones.every((z) => z.bottom <= z.top && (z.side === 'long' || z.side === 'short')));
 });
+
+test('ICT: planos em formação com preços coerentes e caminho que começa no preço atual', () => {
+  let n = 0;
+  for (const seed of [2, 5, 8, 11]) {
+    const cs = synthetic(1500, seed);
+    const last = cs[cs.length - 1].c;
+    for (const p of ictZones(cs, { pivot: 3, minRR: 2, targetLookback: 300 }, atrFn(cs))) {
+      n++;
+      assert.ok(p.bottom <= p.top);
+      if (p.side === 'long') assert.ok(p.stop < p.entry && p.entry < p.target, JSON.stringify(p));
+      else assert.ok(p.target < p.entry && p.entry < p.stop, JSON.stringify(p));
+      assert.equal(p.path[0][1], last);
+      assert.ok(p.path.every(([k], i) => i === 0 || k > p.path[i - 1][0]), 'caminho avança no tempo');
+      if (p.touched) assert.ok(p.mss != null);
+    }
+  }
+  assert.ok(n > 0);
+});
+
+test('ICT: distância do plano é sempre positiva e liquidez fica do lado certo do stop', () => {
+  for (const seed of [2, 5, 8, 11, 14]) {
+    const cs = synthetic(1500, seed);
+    for (const p of ictZones(cs, { pivot: 3, minRR: 2, targetLookback: 300 }, atrFn(cs))) {
+      assert.ok(p.dist >= 0);
+      if (p.liq != null) assert.ok(p.side === 'long' ? p.liq > p.stop : p.liq < p.stop, JSON.stringify(p));
+    }
+  }
+});

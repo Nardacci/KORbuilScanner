@@ -1,18 +1,18 @@
-import { DEFAULTS, HTF } from './engine.js?v=2026.10.12-2153';
-import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.12-2153';
-import { dowState } from './dow.js?v=2026.10.12-2153';
-import { ondaState } from './onda34.js?v=2026.10.12-2153';
-import { ichimokuState } from './ichimoku.js?v=2026.10.12-2153';
-import { paState } from './priceaction.js?v=2026.10.12-2153';
-import { ictZones } from './ict.js?v=2026.10.12-2153';
-import { atr } from './indicators.js?v=2026.10.12-2153';
-import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.12-2153';
-import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.12-2153';
-import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.12-2153';
+import { DEFAULTS, HTF } from './engine.js?v=2026.10.12-2204';
+import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.12-2204';
+import { dowState } from './dow.js?v=2026.10.12-2204';
+import { ondaState } from './onda34.js?v=2026.10.12-2204';
+import { ichimokuState } from './ichimoku.js?v=2026.10.12-2204';
+import { paState } from './priceaction.js?v=2026.10.12-2204';
+import { ictZones } from './ict.js?v=2026.10.12-2204';
+import { atr } from './indicators.js?v=2026.10.12-2204';
+import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.12-2204';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.12-2204';
+import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.12-2204';
 import {
   fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
-  describeSetup, describeStatus, describeWait,
-} from './texts.js?v=2026.10.12-2153';
+  describeSetup, describeStatus, describeWait, describePlan,
+} from './texts.js?v=2026.10.12-2204';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -86,6 +86,13 @@ const CTX = {
   ict: (cs) => ictZones(cs, { ...DEFAULTS, ...cfg }, atr(cs)),
 };
 const methodCtx = (r, m) => (CTX[m] ? CTX[m](r.cs) : null);
+// Planos do ICT em formação (calculados uma vez por análise). Só vale plano com R:R suficiente
+// e zona a no máximo 8% do preço.
+function plansOf(r) {
+  if (!r._zones) r._zones = methodCtx(r, 'ict');
+  return r._zones.filter((p) => p.rr >= cfg.minRR && (p.touched || p.dist <= 0.08));
+}
+const planOf = (r) => (scanMethod === 'ict' && !r.a.active ? plansOf(r)[0] || null : null);
 
 async function runScan(auto = false) {
   const tf = $('#sc-tf').value;
@@ -165,12 +172,18 @@ async function liveTick() {
 // Sinal novo (no último candle fechado) > ordem pendente > posição já aberta > aguardar.
 const isOpen = (s, cs) => s && s.result.status === 'aberta' && s.result.fillIdx < cs.length - 1;
 const isNew = (s, cs) => s && s.i === cs.length - 1;
-const prio = (r) => { const s = r.a.active; return !s ? 0 : isNew(s, r.cs) ? 3 : isOpen(s, r.cs) ? 1 : 2; };
+const prio = (r) => {
+  const s = r.a.active;
+  if (s) return isNew(s, r.cs) ? 3 : isOpen(s, r.cs) ? 1 : 2;
+  const p = planOf(r);
+  return p ? (p.touched ? 1.5 : 0.5) : 0;
+};
 
 function rowOrder(a, b) {
   const pa = prio(a), pb = prio(b);
   if (pa !== pb) return pb - pa;
-  if (pa) return b.a.active.score - a.a.active.score;
+  if (pa >= 1 && pa !== 1.5) return b.a.active.score - a.a.active.score;
+  if (pa) return (planOf(a).dist - planOf(b).dist);
   return a.rank - b.rank;
 }
 
@@ -192,10 +205,12 @@ function trendCell(r) {
 
 function situation(r) {
   const s = r.a.active, c = r.a.context;
-  if (!s && scanMethod === 'ict') {
-    if (!r._zones) r._zones = methodCtx(r, 'ict');
-    const inZone = r._zones.find((z) => z.touched);
-    if (inZone) return `Na zona de ${inZone.side === 'long' ? 'demanda' : 'oferta'} · gatilho ${inZone.side === 'long' ? '>' : '<'} ${fmtPrice(inZone.mss)}`;
+  const plan = !s ? planOf(r) : null;
+  if (plan) {
+    const nome = plan.side === 'long' ? 'demanda' : 'oferta';
+    return plan.touched
+      ? `Na zona de ${nome} · gatilho ${plan.side === 'long' ? '>' : '<'} ${fmtPrice(plan.mss)}`
+      : `A ${fmtNum(plan.dist * 100, 1)}% da zona de ${nome}`;
   }
   if (!s) return rangeZone(c.rangePos).replace(/^na |^no /, '').replace(/^./, (x) => x.toUpperCase());
   const price = Number.isFinite(r.live) ? r.live : c.price;
@@ -239,17 +254,22 @@ function renderScan() {
   const vis = rows.filter((r) => scanFilter === 'todos' || (r.a.active ? r.a.active.side : 'aguardar') === scanFilter);
   $('#sc-body').innerHTML = vis.map((r) => {
     const s = r.a.active, c = r.a.context;
-    const badge = signalBadge(s, r.cs) + (s && s.spring ? `<span class="tag">${s.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : '');
+    const plan = planOf(r);
+    const badge = plan
+      ? `<span class="badge form ${plan.side}" title="Plano em formação: o gatilho ainda não aconteceu">EM FORMAÇÃO · ${plan.side === 'long' ? 'compra' : 'venda'}</span>`
+      : signalBadge(s, r.cs) + (s && s.spring ? `<span class="tag">${s.side === 'long' ? 'Spring' : 'Upthrust'}</span>` : '');
+    const num = (v) => (plan ? `≈ ${fmtPrice(v)}` : s ? fmtPrice(v) : '—');
+    const src = plan || s;
     return `<tr data-sym="${esc(r.symbol)}" class="${r.symbol === openSym && !$('#detail').hidden ? 'sel' : ''}">
       <td class="sym">${esc(r.symbol.replace(/USDT$/, ''))}<small>${Number.isFinite(r.change) ? fmtPct(r.change) : 'extra'}</small></td>
       <td>${badge}</td>
       <td>${consCell(r)}</td>
       <td class="${touched(r) ? 'touch' : ''}">${esc(situation(r))}</td>
       <td class="num">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</td>
-      <td class="num">${s ? fmtPrice(s.entry) : '—'}</td>
-      <td class="num">${s ? fmtPrice(s.stop) : '—'}</td>
-      <td class="num">${s ? fmtPrice(s.target) : '—'}</td>
-      <td class="num">${s ? fmtNum(s.rr, 1) : '—'}</td>
+      <td class="num">${src ? num(src.entry) : '—'}</td>
+      <td class="num">${src ? num(src.stop) : '—'}</td>
+      <td class="num">${src ? num(src.target) : '—'}</td>
+      <td class="num">${src ? (plan ? '≈ ' : '') + fmtNum(src.rr, 1) : '—'}</td>
       <td>${trendCell(r)}</td>
       <td class="num">${fmtNum(c.rsi, 0)}</td>
       <td class="num">${s ? s.score : '—'}</td>
@@ -281,6 +301,37 @@ function showDetail(sym, setup = undefined, scroll = true) {
   $('#dt-sub').innerHTML = `${TF_LABEL[scan.tf]} · preço agora <b id="dt-price">${fmtPrice(Number.isFinite(r.live) ? r.live : c.price)}</b> · ` +
     `análise com candles fechados até ${fmtDate(r.cs[r.cs.length - 1].T + 1)} · horários de abertura do candle, como no TradingView`;
   $('#dt-tv').href = `https://www.tradingview.com/chart/?symbol=BINANCE:${encodeURIComponent(sym)}.P`;
+
+  const plans = detailMethod === 'ict' ? plansOf(r) : [];
+  const showPlan = (k) => {
+    const p = plans[k];
+    renderSymbolChart($('#dt-chart'), r.cs, null, a.structure, detailMethod, p);
+    if (Number.isFinite(r.live)) setLivePrice(r.live);
+    const price = Number.isFinite(r.live) ? r.live : c.price;
+    $('#dt-plan').innerHTML = `<span class="badge form ${p.side}">EM FORMAÇÃO · ${p.side === 'long' ? 'compra' : 'venda'}</span>
+      <dl>
+        <dt>Zona (${esc(p.type)})</dt><dd>${fmtPrice(p.bottom)} – ${fmtPrice(p.top)}</dd>
+        <dt>${p.touched ? 'Gatilho' : 'Gatilho ≈'}</dt><dd>${fmtPrice(p.entry)}</dd>
+        <dt>Stop ≈</dt><dd>${fmtPrice(p.stop)}</dd>
+        <dt>Alvo</dt><dd>${fmtPrice(p.target)}</dd>
+        <dt>R:R ≈</dt><dd>${fmtNum(p.rr, 2)}</dd>
+        <dt>Distância da zona</dt><dd>${p.touched ? 'na zona' : `${fmtNum(p.dist * 100, 1)}%`}</dd>
+      </dl>
+      <p class="note">A linha tracejada no gráfico é o caminho que o preço precisa fazer para a entrada acontecer.</p>`;
+    $('#dt-text').innerHTML = describePlan(p, price, scan.tf).map((x) => `<p>${x}</p>`).join('');
+    for (const tr of $$('#dt-plans tr')) tr.classList.toggle('sel', Number(tr.dataset.k) === k);
+  };
+  $('#dt-plans-wrap').hidden = !plans.length;
+  $('#dt-plans').innerHTML = plans.map((p, k) => `<tr data-k="${k}">
+      <td><span class="badge ${p.side}">${p.side === 'long' ? 'COMPRA' : 'VENDA'}</span></td>
+      <td>${esc(p.type)} ${fmtPrice(p.bottom)} – ${fmtPrice(p.top)}</td>
+      <td>${p.touched ? '<b>na zona</b>' : `${fmtNum(p.dist * 100, 1)}%`}</td>
+      <td class="num">${p.touched ? '' : '≈ '}${fmtPrice(p.entry)}</td><td class="num">≈ ${fmtPrice(p.stop)}</td>
+      <td class="num">${fmtPrice(p.target)}</td><td class="num">${fmtNum(p.rr, 1)}</td></tr>`).join('');
+  $('#dt-plans').onclick = (ev) => {
+    const tr = ev.target.closest('tr[data-k]');
+    if (tr) showPlan(Number(tr.dataset.k));
+  };
 
   renderSymbolChart($('#dt-chart'), r.cs, s, a.structure, detailMethod);
   if (Number.isFinite(r.live)) setLivePrice(r.live);
@@ -321,6 +372,8 @@ function showDetail(sym, setup = undefined, scroll = true) {
       </dl>`;
     $('#dt-text').innerHTML = describeWait(c, scan.tf, htfName, detailMethod, methodCtx(r, detailMethod)).map((p) => `<p>${p}</p>`).join('');
   }
+
+  if (plans.length && !a.active && setup === undefined) showPlan(0);
 
   const hist = [...a.recent].reverse();
   $('#dt-hist').innerHTML = hist.map((h, k) => `<tr data-k="${k}" class="${h === s ? 'sel' : ''}">

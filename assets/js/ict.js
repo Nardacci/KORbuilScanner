@@ -15,8 +15,8 @@
 // Cada zona é usada uma vez; ela morre se o preço fechar abaixo dela ou se o gatilho não vier
 // em 30 candles depois do toque.
 
-import { isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.12-2153';
-import { findTarget } from './engine.js?v=2026.10.12-2153';
+import { isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.12-2204';
+import { findTarget } from './engine.js?v=2026.10.12-2204';
 
 const MAX_ZONE_AGE = 150;
 
@@ -82,7 +82,7 @@ function scan(cs, o, atr, onSignal) {
     }
     if (zones.length > 60) zones = zones.filter((z) => !z.dead);
   }
-  return zones.filter((z) => !z.dead);
+  return { zones: zones.filter((z) => !z.dead), highs, lows };
 }
 
 export function detectIctLong(cs, o, ind) {
@@ -112,15 +112,69 @@ export function detectIctLong(cs, o, ind) {
   return setups;
 }
 
-// Zonas ainda vivas (compra e venda), para mostrar o gatilho antes de ele acontecer.
+// Plano antecipado para uma zona viva (no espaço de compra): o que o preço precisa fazer
+// para a entrada acontecer, com entrada, stop e alvo estimados e o caminho projetado.
+function planLong(cs, o, atr, z, highs, lows) {
+  const n = cs.length - 1, a = atr[n], price = cs[n].c;
+  const h = z.top - z.bottom;
+  const touched = z.touched >= 0;
+  const stop = (touched ? Math.min(z.minLow, z.bottom) : z.bottom) - 0.1 * a;
+  // Entrada: com a zona tocada, o gatilho é exato (fechar acima do topo interno);
+  // antes do toque, estima-se o MSS logo acima da zona.
+  const entry = touched ? z.mss : z.top + 0.25 * a;
+  const risk = entry - stop;
+  if (!(risk > 0)) return null;
+  let target = null;
+  for (const H of highs) {
+    if (n - H.i > o.targetLookback || H.p < entry + o.minRR * risk) continue;
+    let taken = false;
+    for (let t = H.i + 1; t <= n; t++) if (cs[t].h > H.p) { taken = true; break; }
+    if (!taken && (target === null || H.p < target)) target = H.p;
+  }
+  const targetIsLiq = target !== null;
+  if (target === null) target = entry + Math.max(o.minRR, 3) * risk;
+  // Liquidez: fundo confirmado ANTES do toque, dentro da zona ou logo abaixo dela.
+  // Com a zona já tocada, se a mínima da reação passou dele, a varredura já aconteceu.
+  // Zona já tocada: só conta a liquidez que a reação já varreu (uma nova varredura mudaria o stop).
+  const liqs = lows.filter((L) => n - L.i <= 150 && (!touched || L.i < z.touched) && L.p <= z.top && L.p >= z.bottom - a
+    && (!touched || z.minLow < L.p) && L.p > stop);
+  const liq = liqs.length ? Math.min(...liqs.map((L) => L.p)) : null;
+  const liqSwept = touched && liq !== null;
+  const floor = (v) => Math.max(v, stop + 0.05 * a);
+  const path = touched
+    ? [[0, price], [2, floor(Math.min(price, z.minLow + 0.3 * h))], [4, entry + 0.3 * a], [6, entry - 0.25 * risk], [16, target]]
+    : [[0, price], [4, z.top - 0.3 * h], [7, floor(liq !== null && liq - 0.2 * a > stop ? liq - 0.2 * a : z.bottom + 0.2 * h)],
+      [10, entry + 0.3 * a], [12, entry - 0.25 * risk], [22, target]];
+  return {
+    type: z.type, top: z.top, bottom: z.bottom, touched, created: z.created,
+    entry, stop, target, rr: (target - entry) / risk, targetIsLiq,
+    mss: touched ? z.mss : null, low: touched ? z.minLow : null, liq, liqSwept,
+    dist: touched ? 0 : Math.abs((price - z.top) / price),
+    path,
+  };
+}
+
+// Planos de todas as zonas vivas (compra e venda), em preços reais.
+// O mais relevante primeiro: zona já tocada, depois a mais próxima do preço.
 export function ictZones(cs, o, atr) {
   const mirror = cs.map((c) => ({ ...c, o: -c.o, h: -c.l, l: -c.h, c: -c.c }));
   const out = [];
-  for (const z of scan(cs, o, atr)) {
-    out.push({ side: 'long', type: z.type, top: z.top, bottom: z.bottom, touched: z.touched >= 0, mss: z.touched >= 0 ? z.mss : null, created: z.created });
+  const L = scan(cs, o, atr);
+  for (const z of L.zones) {
+    const p = planLong(cs, o, atr, z, L.highs, L.lows);
+    if (p) out.push({ side: 'long', ...p });
   }
-  for (const z of scan(mirror, o, atr)) {
-    out.push({ side: 'short', type: z.type, top: -z.bottom, bottom: -z.top, touched: z.touched >= 0, mss: z.touched >= 0 ? -z.mss : null, created: z.created });
+  const S = scan(mirror, o, atr);
+  for (const z of S.zones) {
+    const p = planLong(mirror, o, atr, z, S.highs, S.lows);
+    if (!p) continue;
+    out.push({
+      side: 'short', ...p,
+      top: -p.bottom, bottom: -p.top,
+      entry: -p.entry, stop: -p.stop, target: -p.target,
+      mss: p.mss == null ? null : -p.mss, low: p.low == null ? null : -p.low, liq: p.liq == null ? null : -p.liq,
+      path: p.path.map(([k, v]) => [k, -v]),
+    });
   }
-  return out;
+  return out.sort((a, b) => (b.touched - a.touched) || a.dist - b.dist);
 }
