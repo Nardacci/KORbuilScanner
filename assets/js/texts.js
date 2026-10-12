@@ -135,6 +135,37 @@ function describeIct(s, cs, htfName) {
   ];
 }
 
+// Plano antecipado do ICT: o que o preço precisa fazer para a entrada acontecer.
+export function describePlan(p, price, tf) {
+  const long = p.side === 'long';
+  const zona = `${long ? 'demanda' : 'oferta'} (${p.type}) entre <b>${fmtPrice(p.bottom)}</b> e <b>${fmtPrice(p.top)}</b>`;
+  const L = [];
+  if (!p.touched) {
+    L.push(`<b>1. Chegar na zona:</b> o preço precisa ${long ? 'cair' : 'subir'} até a zona de ${zona}, ` +
+      `a ${fmtNum(Math.abs(p.dist) * 100, 1)}% do preço atual (${fmtPrice(price)}).`);
+  } else {
+    L.push(`<b>1. Na zona:</b> o preço já entrou na zona de ${zona}` +
+      (p.low != null ? ` e fez ${long ? 'mínima' : 'máxima'} em ${fmtPrice(p.low)}.` : '.'));
+  }
+  L.push(`<b>2. Reagir:</b> mostrar rejeição dentro da zona` +
+    (p.liq == null ? ''
+      : p.liqSwept ? ` (a <b>liquidez</b> do ${long ? 'fundo' : 'topo'} em ${fmtPrice(p.liq)} <b>já foi varrida</b>, ponto a favor)`
+        : `, de preferência <b>varrendo a liquidez</b> do ${long ? 'fundo' : 'topo'} em ${fmtPrice(p.liq)} e voltando`) +
+    `. Se um candle de ${tf} <b>fechar ${long ? 'abaixo' : 'acima'} de ${fmtPrice(long ? p.bottom : p.top)}</b>, a zona morre e o plano é cancelado.`);
+  L.push(p.touched
+    ? `<b>3. Gatilho (MSS):</b> um candle de ${tf} <b>fechar ${long ? 'acima' : 'abaixo'} de ${fmtPrice(p.mss)}</b> (o último ${long ? 'topo' : 'fundo'} interno da reação). É o sinal de entrada.`
+    : `<b>3. Gatilho (MSS):</b> depois da reação, um candle de ${tf} fechar ${long ? 'acima do último topo' : 'abaixo do último fundo'} interno da reação. ` +
+      `Pela posição da zona, isso deve acontecer perto de <b>${fmtPrice(p.entry)}</b> (o valor exato aparece quando o preço tocar a zona).`);
+  const riskPct = (Math.abs(p.entry - p.stop) / p.entry) * 100;
+  L.push(`<b>4. Entrada e proteção:</b> ${long ? 'compra' : 'venda'} no fechamento do candle do gatilho (≈ ${fmtPrice(p.entry)}), ` +
+    `stop ${long ? 'abaixo da mínima' : 'acima da máxima'} feita na zona (≈ <b>${fmtPrice(p.stop)}</b>, ${fmtNum(riskPct, 1)}% de risco), ` +
+    `alvo em <b>${fmtPrice(p.target)}</b>${p.targetIsLiq ? ` (a próxima liquidez ${long ? 'acima' : 'abaixo'})` : ' (3× o risco)'}. ` +
+    `Risco/retorno estimado: <b>${fmtNum(p.rr, 1)}</b>.`);
+  L.push('<span class="muted">Valores com ≈ são estimativas: o stop e a entrada exatos dependem da mínima feita na zona e do topo interno da reação. ' +
+    'O gatilho também vence se não vier em 30 candles depois do toque.</span>');
+  return L;
+}
+
 // Texto do setup ativo (ou de um setup histórico).
 export function describeSetup(s, cs, tf, htfName) {
   if (s.method === 'ict') return describeIct(s, cs, htfName);
