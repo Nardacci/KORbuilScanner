@@ -18,7 +18,7 @@
 // Marcas extras: "spring" quando o fundo varrido é o fundo de uma faixa
 // lateral (Wyckoff), volume alto na varredura e alinhamento com o tempo maior.
 
-import { atr, ema, sma, rsi, isPivotHigh, isPivotLow } from './indicators.js';
+import { atr, ema, sma, rsi, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.12-1854';
 
 export const DEFAULTS = {
   pivot: 3,            // candles de cada lado para confirmar topo/fundo

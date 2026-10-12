@@ -80,6 +80,11 @@ python3 -m http.server 8000   # e abra http://localhost:8000
 npm test                       # testes do motor
 ```
 
+## Versão dos arquivos (cache do navegador)
+
+Antes de publicar, rode `node scripts/versao.mjs`. Ele carimba uma versão (`?v=...`) em todos os endereços de
+arquivos da página, para o navegador baixar os arquivos novos, e mostra o número no rodapé.
+
 ## Publicar no GitHub Pages
 
 Em **Settings → Pages**, escolha *Deploy from a branch*, a branch com o código e a pasta `/ (root)`.
