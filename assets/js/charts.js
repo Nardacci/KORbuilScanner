@@ -1,10 +1,10 @@
 // Gráficos com a biblioteca Lightweight Charts (TradingView), carregada em
 // vendor/ como script global `LightweightCharts`.
 
-import { fmtPrice } from './texts.js?v=2026.10.12-1854';
-import { waves, grab } from './onda34.js?v=2026.10.12-1854';
-import { ichimoku } from './ichimoku.js?v=2026.10.12-1854';
-import { ema } from './indicators.js?v=2026.10.12-1854';
+import { fmtPrice } from './texts.js?v=2026.10.12-2153';
+import { waves, grab } from './onda34.js?v=2026.10.12-2153';
+import { ichimoku } from './ichimoku.js?v=2026.10.12-2153';
+import { ema } from './indicators.js?v=2026.10.12-2153';
 
 const LW = () => window.LightweightCharts;
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -113,6 +113,10 @@ export function renderSymbolChart(el, cs, setup, struct, method = setup?.method 
       markers.push({ time: sec(cs[setup.swingH.i].t), position: above, color: css('--text-2'), shape: 'circle', text: long ? 'Topo' : 'Fundo', size: 0.7 });
       markers.push({ time: sec(cs[setup.swingL2.i].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: long ? 'Fundo mais alto' : 'Topo mais baixo' });
       markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: long ? 'Rompeu o topo' : 'Perdeu o fundo' });
+    } else if (setup.method === 'ict') {
+      markers.push({ time: sec(cs[setup.zoneIdx].t), position: below, color: css('--text-2'), shape: 'square', text: setup.zoneType, size: 0.7 });
+      markers.push({ time: sec(cs[setup.lowIdx].t), position: below, color: css('--warn'), shape: long ? 'arrowUp' : 'arrowDown', text: setup.swept ? 'Varreu liquidez' : 'Reação na zona' });
+      markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: 'MSS' });
     } else if (setup.method === 'ichimoku') {
       markers.push({ time: sec(cs[setup.i].t), position: above, color: css('--accent'), shape: 'circle', text: setup.trigger === 'nuvem' ? 'Rompeu a nuvem' : 'Recuo na Kijun' });
     } else if (setup.method === 'pa') {
@@ -132,6 +136,11 @@ export function renderSymbolChart(el, cs, setup, struct, method = setup?.method 
     line(setup.entry, css('--accent'), `Entrada ${fmtPrice(setup.entry)}`, LS.Solid, 2);
     line(setup.stop, down, 'Stop', LS.Solid, 2);
     line(setup.target, up, 'Alvo', LS.Solid, 2);
+    if (setup.method === 'ict') {
+      line(setup.zoneTop, css('--text-2'), `${setup.zoneType} topo`, LS.Dashed);
+      line(setup.zoneBottom, css('--text-2'), `${setup.zoneType} fundo`, LS.Dashed);
+      line(setup.mssLevel, css('--text-3'), 'MSS', LS.Dotted);
+    }
     if (setup.method === 'dow') {
       line(setup.swingH.p, css('--text-3'), long ? 'Topo rompido' : 'Fundo perdido', LS.Dotted);
     }
