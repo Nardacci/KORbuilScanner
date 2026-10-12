@@ -2,6 +2,8 @@ import { DEFAULTS, HTF } from './engine.js';
 import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js';
 import { dowState } from './dow.js';
 import { ondaState } from './onda34.js';
+import { ichimokuState } from './ichimoku.js';
+import { paState } from './priceaction.js';
 import { backtestSymbol, summarize, metrics } from './backtest.js';
 import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js';
 import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js';
@@ -77,7 +79,8 @@ let detailMethod = 'smc'; // método mostrado no detalhe
 // Visão de um ativo por um método: setups do método + contexto comum.
 const aOf = (r, m) => ({ ...r.all.methods[m], context: r.all.context, structure: r.all.structure });
 // Contexto específico do método (para o texto de "aguardar").
-const methodCtx = (r, m) => (m === 'dow' ? dowState(r.cs, cfg.pivot) : m === 'onda34' ? ondaState(r.cs) : null);
+const CTX = { dow: (cs) => dowState(cs, cfg.pivot), onda34: ondaState, ichimoku: ichimokuState, pa: paState };
+const methodCtx = (r, m) => (CTX[m] ? CTX[m](r.cs) : null);
 
 async function runScan(auto = false) {
   const tf = $('#sc-tf').value;

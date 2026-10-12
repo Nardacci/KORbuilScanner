@@ -4,11 +4,15 @@
 import { analyze, detectSmcLong, runDetector } from './engine.js';
 import { detectDowLong } from './dow.js';
 import { detectOndaLong } from './onda34.js';
+import { detectIchimokuLong } from './ichimoku.js';
+import { detectPaLong } from './priceaction.js';
 
 export const METHODS = {
   smc: { id: 'smc', name: 'SMC + Wyckoff', short: 'SMC', detector: detectSmcLong },
   dow: { id: 'dow', name: 'Teoria de Dow', short: 'Dow', detector: detectDowLong },
   onda34: { id: 'onda34', name: 'Onda 34 (Raghee Horner)', short: 'Onda', detector: detectOndaLong },
+  pa: { id: 'pa', name: 'Price action', short: 'PA', detector: detectPaLong },
+  ichimoku: { id: 'ichimoku', name: 'Ichimoku', short: 'Ichimoku', detector: detectIchimokuLong },
 };
 export const METHOD_IDS = Object.keys(METHODS);
 

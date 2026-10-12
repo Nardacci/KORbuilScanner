@@ -32,6 +32,7 @@ export const STATUS = {
   cancelada: 'Cancelada (andou demais sem executar)',
   bos: 'Saída no BOS contra',
   onda: 'Saída: fechou do outro lado da onda',
+  kijun: 'Saída: fechou do outro lado da Kijun',
 };
 
 export function rangeZone(pos) {
@@ -85,8 +86,44 @@ function describeOnda(s, cs, htfName) {
   ];
 }
 
+function describeIchimoku(s, cs, htfName) {
+  const long = s.side === 'long';
+  const L = [];
+  if (s.trigger === 'nuvem') {
+    L.push(`<b>1. Rompimento da nuvem:</b> em ${fmtDate(cs[s.i].t)} o preço fechou ${long ? 'acima' : 'abaixo'} da nuvem ` +
+      `(${fmtPrice(s.cloudBottom)} a ${fmtPrice(s.cloudTop)}) pela primeira vez.`);
+  } else {
+    L.push(`<b>1. Recuo na Kijun:</b> com o preço ${long ? 'acima' : 'abaixo'} da nuvem, em ${fmtDate(cs[s.i].t)} ele tocou a Kijun ` +
+      `(${fmtPrice(s.kijun)}) e fechou de volta ${long ? 'acima' : 'abaixo'} dela.`);
+  }
+  L.push(`<b>2. Confirmações:</b> Tenkan (${fmtPrice(s.tenkan)}) ${long ? 'acima' : 'abaixo'} da Kijun (${fmtPrice(s.kijun)})` +
+    (s.trigger === 'nuvem' ? `, Chikou ${long ? 'acima' : 'abaixo'} do preço de 26 candles atrás e nuvem futura ${long ? 'de alta' : 'de baixa'}.` : '.'));
+  L.push(planText(s) + ` Saída antecipada se o preço fechar ${long ? 'abaixo' : 'acima'} da Kijun.`);
+  L.push(contextText(s, htfName));
+  return L;
+}
+
+function describePa(s, cs, htfName) {
+  const long = s.side === 'long';
+  const pat = s.pattern === 'pin' ? (long ? 'pin bar / martelo (pavio longo embaixo, fechamento no alto)' : 'pin bar / estrela cadente (pavio longo em cima, fechamento embaixo)')
+    : (long ? 'engolfo de alta (o corpo cobre o candle de baixa anterior)' : 'engolfo de baixa (o corpo cobre o candle de alta anterior)');
+  const r = s.result;
+  return [
+    `<b>1. Contexto:</b> média de 20 ${long ? 'subindo' : 'caindo'} e o preço recuou até ela.`,
+    `<b>2. Candle de sinal</b> (${fmtDate(cs[s.i].t)}): ${pat}.`,
+    `<b>3. Entrada por confirmação:</b> ordem de stop ${long ? 'acima da máxima' : 'abaixo da mínima'} do candle de sinal, em <b>${fmtPrice(s.entry)}</b>, ` +
+      `válida por 3 candles. Só entra se o preço confirmar a rejeição; cancela se for ao stop antes.` +
+      (r.fillIdx >= 0 && r.fillPrice != null && Math.abs(r.fillPrice - s.entry) > 1e-12 ? ` Executou com gap, em ${fmtPrice(r.fillPrice)}.` : ''),
+    planText(s).replace(/compra limitada em|venda limitada em/, long ? 'compra com stop em' : 'venda com stop em') +
+      ` O stop fica ${long ? 'abaixo' : 'acima'} do candle de sinal.`,
+    contextText(s, htfName),
+  ];
+}
+
 // Texto do setup ativo (ou de um setup histórico).
 export function describeSetup(s, cs, tf, htfName) {
+  if (s.method === 'ichimoku') return describeIchimoku(s, cs, htfName);
+  if (s.method === 'pa') return describePa(s, cs, htfName);
   if (s.method === 'dow') return describeDow(s, cs, htfName);
   if (s.method === 'onda34') return describeOnda(s, cs, htfName);
   const long = s.side === 'long';
@@ -152,6 +189,16 @@ export function describeWait(ctx, tf, htfName, method = 'smc', mctx = null) {
     L.push(`<b>Onda 34:</b> último candle ${cor}; onda ${mctx.slope}. Nos últimos 10 candles: ${mctx.counts.g} verdes, ${mctx.counts.r} vermelhos, ${mctx.counts.b} azuis.`);
     L.push(mctx.counts.b >= 5 ? 'Muitos candles azuis: mercado sem direção. Pelo método: <b>ficar de fora</b>.'
       : 'Sem recuo até a onda seguido de retomada a favor da tendência. Pelo método: <b>aguardar</b>.');
+  } else if (method === 'ichimoku' && mctx) {
+    const m = mctx;
+    L.push(`<b>Ichimoku:</b> preço <b>${m.pos}</b> da nuvem; Tenkan ${m.tk} da Kijun (${fmtPrice(m.kijun)}); Chikou ${m.chikou} do preço de 26 candles atrás; ` +
+      `nuvem futura ${m.futureBull ? 'de alta' : 'de baixa'}.`);
+    L.push(m.pos === 'dentro' ? 'Preço dentro da nuvem: zona de indecisão. Pelo método: <b>ficar de fora</b>.'
+      : 'Sem rompimento da nuvem nem recuo na Kijun confirmados agora. Pelo método: <b>aguardar</b>.');
+  } else if (method === 'pa' && mctx) {
+    L.push(`<b>Price action:</b> média de 20 em ${fmtPrice(mctx.ema20)}; contexto ${trendLabel(mctx.trend)}.` +
+      (mctx.lastPattern ? ` O último candle é um ${mctx.lastPattern === 'pin' ? 'pin bar' : 'engolfo'}, mas fora das condições (tendência + recuo até a média).` : ''));
+    L.push('Sem candle de rejeição num recuo até a média de 20 a favor da tendência. Pelo método: <b>aguardar</b>.');
   } else {
     L.push('Sem varredura de liquidez seguida de CHoCH com risco/retorno suficiente. Pelo método: <b>aguardar</b>.');
   }

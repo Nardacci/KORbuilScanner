@@ -242,14 +242,28 @@ export function simulate(cs, st, o) {
   const res = { status: 'pendente', fillIdx: -1, exitIdx: -1, exitPrice: null, R: null, endIdx: cs.length - 1 };
   // Entrada a mercado no fechamento do candle do sinal (Dow, Onda 34).
   if (st.market) { res.fillIdx = st.i; res.status = 'aberta'; }
-  const feeR = (exit) => ((o.feePct / 100) * (Math.abs(entry) + Math.abs(exit))) / risk;
+  let fillPx = entry; // preço efetivo de entrada (ordem de stop pode executar pior, num gap)
+  const feeR = (exit) => ((o.feePct / 100) * (Math.abs(fillPx) + Math.abs(exit))) / risk;
   const close = (k, price, status) => {
     res.status = status; res.exitIdx = k; res.exitPrice = price; res.endIdx = k;
-    res.R = (price - entry) / risk - feeR(price);
+    res.R = (price - fillPx) / risk - feeR(price);
   };
   for (let k = st.i + 1; k < cs.length; k++) {
     const c = cs[k];
     if (bosExit) notePivot(k - k0);
+    if (res.fillIdx < 0 && st.entryType === 'stop') {
+      // Ordem de stop (price action): executa quando o preço passa da máxima do candle de sinal;
+      // perde a validade se antes cair até o stop ou se o prazo acabar.
+      if (k - st.i > (st.expiry ?? o.expiry)) { res.status = 'expirada'; res.endIdx = k; return res; }
+      if (c.h >= entry) {
+        res.fillIdx = k; res.status = 'aberta'; fillPx = Math.max(entry, c.o);
+        res.fillPrice = fillPx;
+        if (c.l <= stop) { close(k, Math.min(stop, c.o), 'perda'); return res; }
+      } else if (c.l <= stop) {
+        res.status = 'expirada'; res.endIdx = k; return res;
+      }
+      continue;
+    }
     if (res.fillIdx < 0) {
       if (k - st.i > o.expiry) { res.status = 'expirada'; res.endIdx = k; return res; }
       if (c.l <= entry) {
@@ -264,14 +278,14 @@ export function simulate(cs, st, o) {
       if (c.l <= stop) { close(k, Math.min(stop, c.o), 'perda'); return res; }
       if (c.h >= target) { close(k, Math.max(target, c.o), 'ganho'); return res; }
       // Onda 34: um fechamento do outro lado da onda encerra a tendência que justificou a entrada.
-      if (st.exitLevels && c.c < st.exitLevels[k]) { close(k, c.c, 'onda'); return res; }
+      if (st.exitLevels && c.c < st.exitLevels[k]) { close(k, c.c, st.exitStatus || 'onda'); return res; }
       if (bosExit && lastLow !== null && c.c < lastLow) { close(k, c.c, 'bos'); return res; }
       if (k - res.fillIdx >= o.maxBarsInTrade) { close(k, c.c, 'tempo'); return res; }
     }
   }
   if (res.status === 'aberta') {
     const last = cs[cs.length - 1].c;
-    res.R = (last - entry) / risk; // resultado parcial, ainda sem taxa de saída
+    res.R = (last - fillPx) / risk; // resultado parcial, ainda sem taxa de saída
   }
   return res;
 }
@@ -311,7 +325,8 @@ export function runDetector(cs, opts, htfTrendAt, detector, method) {
 }
 
 // Campos de preço que precisam ser desvirados nas vendas.
-const PRICE_FIELDS = ['entry', 'stop', 'target', 'sweepLevel', 'sweepLow', 'chochLevel', 'obProx', 'obDist', 'waveHi', 'waveLo'];
+const PRICE_FIELDS = ['entry', 'stop', 'target', 'sweepLevel', 'sweepLow', 'chochLevel', 'obProx', 'obDist', 'waveHi', 'waveLo',
+  'tenkan', 'kijun', 'ema20'];
 const POINT_FIELDS = ['swingL1', 'swingH', 'swingL2'];
 
 function toReal(st, side, htf, aligned) {
@@ -320,8 +335,12 @@ function toReal(st, side, htf, aligned) {
   for (const k of PRICE_FIELDS) if (k in st) r[k] = f(st[k]);
   for (const k of POINT_FIELDS) if (st[k]) r[k] = { ...st[k], p: f(st[k].p) };
   if (side === 'short' && 'waveHi' in st) { r.waveHi = -st.waveLo; r.waveLo = -st.waveHi; }
+  if ('cloudTop' in st) {
+    r.cloudTop = side === 'long' ? st.cloudTop : -st.cloudBottom;
+    r.cloudBottom = side === 'long' ? st.cloudBottom : -st.cloudTop;
+  }
   r.rsi = side === 'long' ? st.rsi : 100 - st.rsi;
-  r.result = { ...st.result, exitPrice: f(st.result.exitPrice) };
+  r.result = { ...st.result, exitPrice: f(st.result.exitPrice), fillPrice: f(st.result.fillPrice) };
   if (st.range) {
     r.range = side === 'long' ? { ...st.range } : { ...st.range, hi: -st.range.lo, lo: -st.range.hi };
   }
