@@ -15,8 +15,8 @@
 // Cada zona é usada uma vez; ela morre se o preço fechar abaixo dela ou se o gatilho não vier
 // em 30 candles depois do toque.
 
-import { isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.12-2204';
-import { findTarget } from './engine.js?v=2026.10.12-2204';
+import { isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.22-0343';
+import { findTarget } from './engine.js?v=2026.10.22-0343';
 
 const MAX_ZONE_AGE = 150;
 

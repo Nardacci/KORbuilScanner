@@ -1,18 +1,19 @@
-import { DEFAULTS, HTF } from './engine.js?v=2026.10.12-2204';
-import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.12-2204';
-import { dowState } from './dow.js?v=2026.10.12-2204';
-import { ondaState } from './onda34.js?v=2026.10.12-2204';
-import { ichimokuState } from './ichimoku.js?v=2026.10.12-2204';
-import { paState } from './priceaction.js?v=2026.10.12-2204';
-import { ictZones } from './ict.js?v=2026.10.12-2204';
-import { atr } from './indicators.js?v=2026.10.12-2204';
-import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.12-2204';
-import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.12-2204';
-import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.12-2204';
+import { DEFAULTS, HTF } from './engine.js?v=2026.10.22-0343';
+import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.22-0343';
+import { dowState } from './dow.js?v=2026.10.22-0343';
+import { ondaState } from './onda34.js?v=2026.10.22-0343';
+import { ichimokuState } from './ichimoku.js?v=2026.10.22-0343';
+import { paState } from './priceaction.js?v=2026.10.22-0343';
+import { ictZones } from './ict.js?v=2026.10.22-0343';
+import { atr } from './indicators.js?v=2026.10.22-0343';
+import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.22-0343';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.22-0343';
+import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.22-0343';
+import { initLab } from './lab-ui.js?v=2026.10.22-0343';
 import {
   fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
   describeSetup, describeStatus, describeWait, describePlan,
-} from './texts.js?v=2026.10.12-2204';
+} from './texts.js?v=2026.10.22-0343';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -714,6 +715,7 @@ function init() {
     fillCfgForm();
     $('#cfg-saved').textContent = 'Padrão restaurado.';
   });
+  initLab();
 }
 
 init();
