@@ -10,8 +10,8 @@
 //   (a sequência de fundos ascendentes se desfez).
 // O volume acima da média no rompimento é a "confirmação pelo volume" de Dow e soma pontos.
 
-import { isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.22-0343';
-import { findTarget } from './engine.js?v=2026.10.22-0343';
+import { isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.22-1251';
+import { findTarget } from './engine.js?v=2026.10.22-1251';
 
 export function detectDowLong(cs, o, ind) {
   const k = o.pivot;

@@ -1,8 +1,8 @@
 // Aba "Laboratório KOR": baixa o histórico de 15m da Binance (fica guardado no navegador)
 // e roda a prova da Estratégia KOR, com o veredito pelos critérios fixados.
 
-import { klinesRange, setOnThrottle } from './binance.js?v=2026.10.22-0343';
-import { runSymbol, buildReport, LAB_SYMBOLS, LAB_START } from './korlab.js?v=2026.10.22-0343';
+import { klinesRange, setOnThrottle } from './binance.js?v=2026.10.22-1251';
+import { runSymbol, buildReport, LAB_SYMBOLS, LAB_START, VARIANTS, variantSummary } from './korlab.js?v=2026.10.22-1251';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -72,7 +72,7 @@ function bar(frac) {
 let busy = false;
 function lock(on) {
   busy = on;
-  for (const b of ['#lab-download', '#lab-run']) $(b).disabled = on;
+  for (const b of ['#lab-download', '#lab-run', '#lab-compare']) $(b).disabled = on;
 }
 
 async function download() {
@@ -139,6 +139,44 @@ async function run() {
   }
 }
 
+// Compara as variações no período de ajuste (o período cego não é usado aqui).
+let lastCompare = null;
+async function compare() {
+  if (busy) return;
+  const cfg = { ctx: $('#lab-ctx').value, exe: $('#lab-exe').value, periodo: 'ajuste', draws: 5 };
+  lock(true);
+  try {
+    const per = VARIANTS.map(() => []);
+    for (let k = 0; k < LAB_SYMBOLS.length; k++) {
+      const rec = await getRec(LAB_SYMBOLS[k]);
+      if (!rec) continue;
+      const cs = unpack(rec);
+      for (let v = 0; v < VARIANTS.length; v++) {
+        status(`Comparando: ${LAB_SYMBOLS[k]} (${k + 1}/${LAB_SYMBOLS.length}), variação ${v + 1}/${VARIANTS.length}…`);
+        bar((k * VARIANTS.length + v) / (LAB_SYMBOLS.length * VARIANTS.length));
+        await yieldUI();
+        per[v].push(runSymbol(LAB_SYMBOLS[k], cs, { ...cfg, opts: VARIANTS[v].opts }));
+      }
+    }
+    if (!per[0].length) { status('Baixe os dados primeiro.', true); return; }
+    lastCompare = { gerado: new Date().toISOString(), ctx: cfg.ctx, exe: cfg.exe, periodo: 'ajuste', variacoes: VARIANTS.map((v, i) => variantSummary(v, per[i])) };
+    $('#lab-var').innerHTML = lastCompare.variacoes.map((v) => `<tr><td>${esc(v.nome)}</td><td class="num">${v.trades}</td>
+      <td class="num">${pct(v.winRate)}</td><td class="num ${v.avgR >= 0 ? 'pos' : 'neg'}">${fR(v.avgR)}</td>
+      <td class="num">${v.profitFactor.toFixed(2)}</td><td class="num">${fR(v.aleatorioR)}</td>
+      <td class="num">${v.ic95Diferenca.map((x) => x.toFixed(2)).join(' a ')}</td><td class="num">${v.ativosPositivos}</td>
+      <td class="num">${[2022, 2023, 2024].map((y) => v.anos[y].toFixed(2)).join(' / ')}</td></tr>`).join('');
+    $('#lab-var-wrap').hidden = false;
+    $('#lab-empty').hidden = true;
+    status('Comparação pronta. Baixe o arquivo e envie no chat.');
+  } catch (e) {
+    console.error(e);
+    status(`Erro: ${e.message}`, true);
+  } finally {
+    bar(null);
+    lock(false);
+  }
+}
+
 // ---------------------------------------------------------------------------
 const PERIODO = { ajuste: 'período de ajuste (2022–2024)', cego: 'período cego (2025 em diante)', tudo: 'histórico inteiro' };
 
@@ -180,12 +218,12 @@ function render(r) {
   $('#lab-empty').hidden = true;
 }
 
-function saveReport() {
-  if (!lastReport) return;
-  const blob = new Blob([JSON.stringify(lastReport)], { type: 'application/json' });
+function saveJson(obj, name) {
+  if (!obj) return;
+  const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `kor-${lastReport.ctx}-${lastReport.exe}-${lastReport.periodo}.json`;
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
@@ -193,7 +231,9 @@ function saveReport() {
 export async function initLab() {
   $('#lab-download').addEventListener('click', download);
   $('#lab-run').addEventListener('click', run);
-  $('#lab-save').addEventListener('click', saveReport);
+  $('#lab-save').addEventListener('click', () => lastReport && saveJson(lastReport, `kor-${lastReport.ctx}-${lastReport.exe}-${lastReport.periodo}.json`));
+  $('#lab-compare').addEventListener('click', compare);
+  $('#lab-var-save').addEventListener('click', () => lastCompare && saveJson(lastCompare, `kor-${lastCompare.ctx}-${lastCompare.exe}-variacoes.json`));
   try {
     $('#lab-data').textContent = (await dataSummary()).text;
   } catch {
