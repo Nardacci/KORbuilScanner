@@ -8,7 +8,7 @@
 //   - aprovação no período cego: >= 150 operações, expectativa > 0, profit factor > 1,3,
 //     maioria dos ativos positiva e melhor que o aleatório (intervalo de 95% da diferença acima de 0).
 
-import { aggregate, korSetups, simulateKor, mirrorCandles, KOR_DEFAULTS } from './kor.js?v=2026.10.22-0343';
+import { aggregate, korSetups, simulateKor, mirrorCandles, KOR_DEFAULTS } from './kor.js?v=2026.10.22-1251';
 
 export const CUT = Date.UTC(2025, 0, 1);
 export const LAB_START = Date.UTC(2022, 0, 1);
@@ -147,5 +147,38 @@ export function buildReport(results, { ctx = '4h', exe = '15m', periodo = 'ajust
     porMes: byMonth, ativosPositivos: `${positivos}/${syms.length}`, monteCarloDD1pct: monteCarloDD(R), criterios,
     aprovado: Object.values(criterios).every(Boolean),
     operacoes: all.sort((a, b) => a.exitT - b.exitT),
+  };
+}
+
+// Variações testadas no período de ajuste, definidas a partir do diagnóstico da primeira rodada
+// (alvos longe demais, stops curtos demais no 15m, custos altos) e do próprio material.
+const V3 = { stopRef: 'ctx', tpMaxRR: 3 };
+export const VARIANTS = [
+  { id: 'v0', nome: 'Atual (v2)', opts: {} },
+  { id: 'v1', nome: 'Stop com folga do tempo maior', opts: { stopRef: 'ctx' } },
+  { id: 'v2', nome: 'Alvo 1 até 3R', opts: { tpMaxRR: 3 } },
+  { id: 'v3', nome: 'Stop do tempo maior + alvo até 3R', opts: V3 },
+  { id: 'v4', nome: 'v3 + alvo até 2R', opts: { ...V3, tpMaxRR: 2 } },
+  { id: 'v5', nome: 'v3 + stop mínimo de 0,8%', opts: { ...V3, minRiskPct: 0.8 } },
+  { id: 'v6', nome: 'v3 + só a favor do contexto', opts: { ...V3, onlyAligned: true } },
+  { id: 'v7', nome: 'v3 + entrada no meio da perna', opts: { ...V3, entryMode: 'meio' } },
+  { id: 'v8', nome: 'v3 + sem saída parcial', opts: { ...V3, partial: 0 } },
+];
+
+// Resumo de uma variação (sem a lista de operações, para comparar lado a lado).
+export function variantSummary(v, results) {
+  const all = results.flatMap((r) => r.trades);
+  const random = results.flatMap((r) => r.random);
+  const m = metrics(all);
+  const bySym = results.map((r) => metrics(r.trades)).filter((x) => x.trades > 0);
+  const half = (from, to) => metrics(all.filter((t) => t.exitT >= from && t.exitT < to));
+  return {
+    id: v.id, nome: v.nome, opts: v.opts, ...m,
+    aleatorioR: random.length ? random.reduce((s, x) => s + x, 0) / random.length : 0,
+    ic95Diferenca: diffCI(all.map((t) => t.R), random),
+    ativosPositivos: `${bySym.filter((x) => x.avgR > 0).length}/${bySym.length}`,
+    compras: metrics(all.filter((t) => t.side === 'long')).avgR,
+    vendas: metrics(all.filter((t) => t.side === 'short')).avgR,
+    anos: { 2022: half(Date.UTC(2022, 0, 1), Date.UTC(2023, 0, 1)).avgR, 2023: half(Date.UTC(2023, 0, 1), Date.UTC(2024, 0, 1)).avgR, 2024: half(Date.UTC(2024, 0, 1), Date.UTC(2025, 0, 1)).avgR },
   };
 }

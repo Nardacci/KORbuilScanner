@@ -18,7 +18,7 @@
 // Tudo é calculado candle a candle com o que já era conhecido (sem olhar o futuro).
 // A venda é o espelho: os mesmos cálculos nos candles invertidos.
 
-import { atr, sma, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.22-0343';
+import { atr, sma, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.22-1251';
 
 export const KOR_DEFAULTS = {
   pivot: 3,            // topos/fundos do tempo maior (candles de cada lado)
@@ -33,6 +33,11 @@ export const KOR_DEFAULTS = {
   volIntent: 1.5,      // volume do candle de rompimento acima de X vezes a média (intenção)
   entryMode: 'poc',    // 'poc' | 'meio' | 'poc-desconto'
   stopAtr: 0.5,        // folga do stop abaixo da captura, em ATRs do tempo menor
+  stopRef: 'ltf',      // 'ltf' = folga em ATRs do tempo menor | 'ctx' = folga em ATRs do tempo maior
+  stopAtrCtx: 0.25,    // folga do stop em ATRs do tempo maior (quando stopRef = 'ctx')
+  minRiskPct: 0,       // descarta stops curtos demais (% do preço), onde os custos pesam muito
+  tpMaxRR: 0,          // limita o alvo 1 a X vezes o risco (0 = alvo na liquidez, sem limite)
+  onlyAligned: false,  // só opera a favor do contexto
   minRR: 2,
   fallbackRR: 3,       // alvo quando não há liquidez oposta
   targetLookback: 300,
@@ -369,9 +374,11 @@ export function korSetups(H, L, opts = {}) {
     for (const cap of contextCaptures(h, o, atrH)) {
       const conf = confirmLtf(l, cap, o, atrL, volAvgL, ratio);
       if (!conf) continue;
-      const risk = conf.entry - conf.stop;
-      if (!(risk > 0) || risk / Math.abs(conf.entry) * 100 > o.maxRiskPct) continue;
       const hj = lastClosed(h, l[conf.j].T);
+      if (o.stopRef === 'ctx') conf.stop = conf.capLow - o.stopAtrCtx * atrH[hj];
+      const risk = conf.entry - conf.stop;
+      const riskPct = risk / Math.abs(conf.entry) * 100;
+      if (!(risk > 0) || riskPct > o.maxRiskPct || riskPct < o.minRiskPct) continue;
       let tp1 = null;
       for (const Hh of cap.highs) {
         if (hj - Hh.i > o.targetLookback || Hh.p < conf.entry + o.minRR * risk) continue;
@@ -379,10 +386,12 @@ export function korSetups(H, L, opts = {}) {
         for (let t = Hh.i + 1; t <= hj; t++) if (h[t].h > Hh.p) { taken = true; break; }
         if (!taken && (tp1 === null || Hh.p < tp1)) tp1 = Hh.p;
       }
-      const targetIsLiq = tp1 !== null;
+      let targetIsLiq = tp1 !== null;
       if (tp1 === null) tp1 = conf.entry + o.fallbackRR * risk;
+      if (o.tpMaxRR > 0 && tp1 > conf.entry + o.tpMaxRR * risk) { tp1 = conf.entry + o.tpMaxRR * risk; targetIsLiq = false; }
       const rr = (tp1 - conf.entry) / risk;
       const { score, parts } = scoreOf(cap, conf, rr);
+      if (o.onlyAligned && !parts.contexto) continue;
       const cls = classOf(score, cap.context, cap.kind);
       if (CLASS_MIN[cls] < CLASS_MIN[o.minClass]) continue;
       const st = { ...conf, tp1, rr, targetIsLiq };
@@ -392,7 +401,7 @@ export function korSetups(H, L, opts = {}) {
         side, kind: cap.kind, context: cap.context, score, parts, cls,
         confirmT: l[conf.j].T, captureT: cap.validT,
         entry: f(conf.entry), stop: f(conf.stop), tp1: f(tp1), rr, targetIsLiq,
-        riskPct: risk / Math.abs(conf.entry) * 100,
+        riskPct,
         region: cap.region && Object.fromEntries(Object.entries(cap.region).map(([key, v]) => [key, typeof v === 'number' && !['from', 'to'].includes(key) ? f(v) : v])),
         forca: cap.forca,
         result: { ...result, fillT: result.fillIdx >= 0 ? l[result.fillIdx].t : null, exitT: result.exitIdx >= 0 ? l[result.exitIdx].T : null },
