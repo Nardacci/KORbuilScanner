@@ -18,7 +18,7 @@
 // Tudo é calculado candle a candle com o que já era conhecido (sem olhar o futuro).
 // A venda é o espelho: os mesmos cálculos nos candles invertidos.
 
-import { atr, sma, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.22-1251';
+import { atr, sma, isPivotHigh, isPivotLow } from './indicators.js?v=2026.10.27-0007';
 
 export const KOR_DEFAULTS = {
   pivot: 3,            // topos/fundos do tempo maior (candles de cada lado)

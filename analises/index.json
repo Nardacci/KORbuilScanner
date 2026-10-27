@@ -1,0 +1,14 @@
+[
+ {
+  "id": "exemplo-4h-2026-10-27-1200",
+  "geradoEm": "2026-10-27T12:00:00-03:00",
+  "ativo": "EXEMPLO",
+  "tf": "4h",
+  "veredito": "aguardar",
+  "direcao": "compra",
+  "classe": "B",
+  "nota": 5,
+  "rr": 2.5,
+  "imagem": "exemplo-4h-2026-10-27-1200.png"
+ }
+]

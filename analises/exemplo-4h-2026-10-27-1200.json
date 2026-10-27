@@ -1,0 +1,28 @@
+{
+ "id": "exemplo-4h-2026-10-27-1200",
+ "geradoEm": "2026-10-27T12:00:00-03:00",
+ "imagem": "exemplo-4h-2026-10-27-1200.png",
+ "ativo": "EXEMPLO", "tf": "4h", "tfExecucao": "15m", "fonte": "print",
+ "veredito": "aguardar", "direcao": "compra", "classe": "B", "nota": 5,
+ "notaItens": { "contexto": 0, "forca": 2, "pocNaRegiao": 1, "volumeCaptura": 0, "fibo618": 0, "divergenciaIfr": 0, "rompimentoTipo1": 1, "fvgConfirmacao": 1 },
+ "precoAtual": 100,
+ "plano": { "projetado": true, "entrada": 101, "stop": 95, "alvo1": 116, "alvo2": 128, "rr": 2.5 },
+ "etapas": [
+  { "n": 1, "nome": "Contexto", "status": "parcial", "evidencia": "Queda forte antes da faixa; depois do JAC o preço voltou ao fundo, então o controle ainda não virou." },
+  { "n": 2, "nome": "Região", "status": "cumprida", "evidencia": "Faixa de acumulação com SC, AR, ST, Spring e Teste; força de fundo (mais tempo na metade de cima)." },
+  { "n": 3, "nome": "Liquidez", "status": "cumprida", "evidencia": "Fundos iguais no fundo da faixa (ST, Teste, LPS)." },
+  { "n": 4, "nome": "Captura", "status": "pendente", "evidencia": "O preço está no fundo da faixa; ainda não fechou abaixo e voltou." },
+  { "n": 5, "nome": "Confirmação", "status": "pendente", "evidencia": "Depois da captura, CHoCH no 15m com candle de corpo grande." },
+  { "n": 6, "nome": "Entrada no teste", "status": "pendente", "evidencia": "POC da perna de confirmação." }
+ ],
+ "leitura": { "tendencia": "baixa", "estrutura": "Acumulação de Wyckoff completa (fases A a D) seguida de rompimento (SOS/JAC) que não segurou: o preço voltou ao fundo da faixa, o que pode ter sido um UTAD.", "niveis": [ { "preco": 116, "tipo": "resistencia", "nome": "Topo da faixa (creek)" }, { "preco": 100, "tipo": "suporte", "nome": "Fundo da faixa" }, { "preco": 95, "tipo": "liquidez", "nome": "Mínima do Spring" } ] },
+ "tese": "Exemplo ilustrativo com preços fictícios. O preço voltou ao fundo de uma acumulação completa. Se varrer os fundos iguais sem perder a mínima do Spring e fechar de volta acima do último topo interno, a compra visa o topo da faixa e depois os topos do JAC. Se perder a mínima do Spring com aceitação, a acumulação falhou e o cenário vira venda.",
+ "invalidacao": "Fechamento de 4h abaixo de 95 (mínima do Spring) com continuidade.",
+ "checklist": [
+  { "item": "Candle de 4h fecha abaixo de 100 e o seguinte fecha de volta acima", "critico": true },
+  { "item": "CHoCH no 15m com corpo grande ou FVG", "critico": true },
+  { "item": "Volume acima da média na captura", "critico": false }
+ ],
+ "oQueFalta": "Varrer o fundo da faixa, voltar para dentro e confirmar no 15m.",
+ "aviso": "Exemplo ilustrativo com preços fictícios. Ferramenta de estudo, não recomendação de investimento."
+}

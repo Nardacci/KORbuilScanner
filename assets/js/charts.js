@@ -1,10 +1,10 @@
 // Gráficos com a biblioteca Lightweight Charts (TradingView), carregada em
 // vendor/ como script global `LightweightCharts`.
 
-import { fmtPrice } from './texts.js?v=2026.10.22-1251';
-import { waves, grab } from './onda34.js?v=2026.10.22-1251';
-import { ichimoku } from './ichimoku.js?v=2026.10.22-1251';
-import { ema } from './indicators.js?v=2026.10.22-1251';
+import { fmtPrice } from './texts.js?v=2026.10.27-0007';
+import { waves, grab } from './onda34.js?v=2026.10.27-0007';
+import { ichimoku } from './ichimoku.js?v=2026.10.27-0007';
+import { ema } from './indicators.js?v=2026.10.27-0007';
 
 const LW = () => window.LightweightCharts;
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();

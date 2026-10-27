@@ -1,0 +1,1 @@
+Coloque aqui os prints a analisar (ex.: ME-4h.png) e rode: claude "/analisar-grafico analises/entrada/ME-4h.png"

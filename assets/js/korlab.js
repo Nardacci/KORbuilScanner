@@ -8,7 +8,7 @@
 //   - aprovação no período cego: >= 150 operações, expectativa > 0, profit factor > 1,3,
 //     maioria dos ativos positiva e melhor que o aleatório (intervalo de 95% da diferença acima de 0).
 
-import { aggregate, korSetups, simulateKor, mirrorCandles, KOR_DEFAULTS } from './kor.js?v=2026.10.22-1251';
+import { aggregate, korSetups, simulateKor, mirrorCandles, KOR_DEFAULTS } from './kor.js?v=2026.10.27-0007';
 
 export const CUT = Date.UTC(2025, 0, 1);
 export const LAB_START = Date.UTC(2022, 0, 1);
