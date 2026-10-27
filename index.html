@@ -6,9 +6,9 @@
   <title>KORbuild Scanner</title>
   <meta name="description" content="Scanner de futuros perpétuos da Binance com setups SMC + Wyckoff e backtest.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101418'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' stroke='%2336c98e' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="assets/css/app.css?v=2026.10.22-1251">
-  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js?v=2026.10.22-1251"></script>
-  <script type="module" src="assets/js/app.js?v=2026.10.22-1251"></script>
+  <link rel="stylesheet" href="assets/css/app.css?v=2026.10.27-0007">
+  <script src="vendor/lightweight-charts/lightweight-charts.standalone.production.js?v=2026.10.27-0007"></script>
+  <script type="module" src="assets/js/app.js?v=2026.10.27-0007"></script>
 </head>
 <body>
   <header class="top">
@@ -23,6 +23,7 @@
       <button role="tab" data-tab="scanner" aria-selected="true">Scanner</button>
       <button role="tab" data-tab="backtest" aria-selected="false">Backtest</button>
       <button role="tab" data-tab="lab" aria-selected="false">Laboratório KOR</button>
+      <button role="tab" data-tab="analises" aria-selected="false">Análises</button>
       <button role="tab" data-tab="config" aria-selected="false">Configurações</button>
       <button role="tab" data-tab="ajuda" aria-selected="false">Como funciona</button>
     </nav>
@@ -321,6 +322,46 @@
       </div>
     </section>
 
+    <!-- ANÁLISES DE GRÁFICO -->
+    <section id="tab-analises" class="tab" role="tabpanel" hidden>
+      <div class="toolbar">
+        <span class="muted">Análises de prints de gráfico feitas pela Estratégia KOR (publicadas pelo comando <code>/analisar-grafico</code>).</span>
+        <button id="an-reload" class="ghost">Atualizar</button>
+      </div>
+      <div id="an-empty" class="empty">
+        <p>Nenhuma análise publicada ainda.</p>
+        <p class="muted">No computador com o Claude Code: coloque o print em <code>analises/entrada/</code> e rode
+        <code>claude "/analisar-grafico analises/entrada/ARQUIVO.png"</code>. A análise aparece aqui depois do push.</p>
+      </div>
+      <div id="an-list" class="table-wrap" hidden>
+        <table class="grid small">
+          <thead><tr><th>Data</th><th>Ativo</th><th>Veredito</th><th>Direção</th><th class="num">Classe</th><th class="num">R:R</th></tr></thead>
+          <tbody id="an-body"></tbody>
+        </table>
+      </div>
+      <article id="an-card" class="detail" hidden>
+        <header class="detail-head">
+          <div><h2 id="an-title"></h2><p id="an-sub" class="muted"></p></div>
+        </header>
+        <div class="an-grid">
+          <figure class="an-fig"><img id="an-img" src="" alt=""></figure>
+          <div>
+            <div id="an-head" class="an-head"></div>
+            <h3>As 6 etapas da KOR</h3>
+            <ol id="an-etapas" class="an-etapas"></ol>
+            <p id="an-falta" class="an-falta" hidden></p>
+          </div>
+        </div>
+        <div class="an-cols">
+          <section><h3>Leitura do gráfico</h3><div id="an-leitura" class="text"></div></section>
+          <section><h3>Tese</h3><p id="an-tese" class="text"></p><h3>Invalidação</h3><p id="an-inval" class="text"></p></section>
+          <section><h3>Checklist antes de entrar</h3><ul id="an-check" class="an-check"></ul><p id="an-check-note" class="muted small-note"></p></section>
+          <section><h3>Nota KOR</h3><ul id="an-nota" class="an-etapas an-nota"></ul></section>
+        </div>
+        <p id="an-aviso" class="muted small-note"></p>
+      </article>
+    </section>
+
     <!-- CONFIGURAÇÕES -->
     <section id="tab-config" class="tab" role="tabpanel" hidden>
       <form id="cfg" class="cfg">
@@ -464,7 +505,7 @@
   <footer class="foot">
     <p>Ferramenta de estudo, não é recomendação de investimento. Dados públicos da Binance, buscados direto do seu navegador.</p>
     <p>Gráficos: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>, Copyright (c) 2023 TradingView, Inc.</p>
-    <p>Versão <span id="versao">2026.10.22-1251</span></p>
+    <p>Versão <span id="versao">2026.10.27-0007</span></p>
   </footer>
 </body>
 </html>

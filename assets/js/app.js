@@ -1,19 +1,20 @@
-import { DEFAULTS, HTF } from './engine.js?v=2026.10.22-1251';
-import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.22-1251';
-import { dowState } from './dow.js?v=2026.10.22-1251';
-import { ondaState } from './onda34.js?v=2026.10.22-1251';
-import { ichimokuState } from './ichimoku.js?v=2026.10.22-1251';
-import { paState } from './priceaction.js?v=2026.10.22-1251';
-import { ictZones } from './ict.js?v=2026.10.22-1251';
-import { atr } from './indicators.js?v=2026.10.22-1251';
-import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.22-1251';
-import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.22-1251';
-import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.22-1251';
-import { initLab } from './lab-ui.js?v=2026.10.22-1251';
+import { DEFAULTS, HTF } from './engine.js?v=2026.10.27-0007';
+import { METHODS, METHOD_IDS, analyzeAll, consensus } from './methods.js?v=2026.10.27-0007';
+import { dowState } from './dow.js?v=2026.10.27-0007';
+import { ondaState } from './onda34.js?v=2026.10.27-0007';
+import { ichimokuState } from './ichimoku.js?v=2026.10.27-0007';
+import { paState } from './priceaction.js?v=2026.10.27-0007';
+import { ictZones } from './ict.js?v=2026.10.27-0007';
+import { atr } from './indicators.js?v=2026.10.27-0007';
+import { backtestSymbol, summarize, metrics } from './backtest.js?v=2026.10.27-0007';
+import { topSymbols, klines, klinesRange, pool, setOnThrottle, livePrices, INTERVAL_MS } from './binance.js?v=2026.10.27-0007';
+import { renderSymbolChart, renderEquity, setLivePrice } from './charts.js?v=2026.10.27-0007';
+import { initLab } from './lab-ui.js?v=2026.10.27-0007';
+import { initAnalises } from './analises-ui.js?v=2026.10.27-0007';
 import {
   fmtPrice, fmtNum, fmtPct, fmtR, fmtDate, sideLabel, STATUS, rangeZone,
   describeSetup, describeStatus, describeWait, describePlan,
-} from './texts.js?v=2026.10.22-1251';
+} from './texts.js?v=2026.10.27-0007';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -716,6 +717,8 @@ function init() {
     $('#cfg-saved').textContent = 'Padrão restaurado.';
   });
   initLab();
+  initAnalises();
+  if (location.hash.startsWith('#analises')) showTab('analises');
 }
 
 init();
