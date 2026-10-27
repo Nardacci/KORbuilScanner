@@ -12,8 +12,8 @@
 // Entrada no fechamento; stop abaixo da Kijun ou da mínima recente (o mais baixo);
 // alvo na próxima liquidez ou 3× o risco. Saída antecipada: fechamento abaixo da Kijun.
 
-import { isPivotHigh } from './indicators.js?v=2026.10.27-0013';
-import { findTarget } from './engine.js?v=2026.10.27-0013';
+import { isPivotHigh } from './indicators.js?v=2026.10.27-0016';
+import { findTarget } from './engine.js?v=2026.10.27-0016';
 
 const SHIFT = 26;
 
