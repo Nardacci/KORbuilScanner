@@ -1,12 +1,12 @@
 // Registro dos métodos de análise. Cada método fornece um detector de compras
 // (as vendas saem dos candles espelhados) e usa a mesma simulação e o mesmo backtest.
 
-import { analyze, detectSmcLong, runDetector } from './engine.js?v=2026.10.27-0013';
-import { detectDowLong } from './dow.js?v=2026.10.27-0013';
-import { detectOndaLong } from './onda34.js?v=2026.10.27-0013';
-import { detectIchimokuLong } from './ichimoku.js?v=2026.10.27-0013';
-import { detectPaLong } from './priceaction.js?v=2026.10.27-0013';
-import { detectIctLong } from './ict.js?v=2026.10.27-0013';
+import { analyze, detectSmcLong, runDetector } from './engine.js?v=2026.10.27-0016';
+import { detectDowLong } from './dow.js?v=2026.10.27-0016';
+import { detectOndaLong } from './onda34.js?v=2026.10.27-0016';
+import { detectIchimokuLong } from './ichimoku.js?v=2026.10.27-0016';
+import { detectPaLong } from './priceaction.js?v=2026.10.27-0016';
+import { detectIctLong } from './ict.js?v=2026.10.27-0016';
 
 export const METHODS = {
   smc: { id: 'smc', letter: 'S', name: 'SMC + Wyckoff', short: 'SMC', detector: detectSmcLong },

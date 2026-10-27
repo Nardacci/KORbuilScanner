@@ -1,30 +1,132 @@
 {
  "id": "meusdt-1d-2026-10-27-1500",
- "geradoEm": "2026-10-27T15:00:00-03:00",
+ "geradoEm": "2026-10-27T15:30:00-03:00",
  "imagem": "meusdt-1d-2026-10-27-1500.png",
- "ativo": "MEUSDT", "tf": "1D", "tfExecucao": "1h", "fonte": "print",
- "veredito": "aguardar", "direcao": "compra", "classe": "C", "nota": 0,
- "notaItens": { "contexto": 0, "forca": 0, "pocNaRegiao": 0, "volumeCaptura": 0, "fibo618": 0, "divergenciaIfr": 0, "rompimentoTipo1": 0, "fvgConfirmacao": 0 },
- "precoAtual": 0.06136,
- "plano": { "projetado": true, "entrada": 0.0590, "stop": 0.0540, "alvo1": 0.0705, "alvo2": 0.0800, "rr": 2.3 },
+ "ativo": "MEUSDT",
+ "tf": "1D",
+ "tfExecucao": "1h",
+ "fonte": "print",
+ "veredito": "aguardar",
+ "direcao": "compra",
+ "classe": "C",
+ "nota": 0,
+ "notaItens": {
+  "contexto": 0,
+  "forca": 0,
+  "pocNaRegiao": 0,
+  "volumeCaptura": 0,
+  "fibo618": 0,
+  "divergenciaIfr": 0,
+  "rompimentoTipo1": 0,
+  "fvgConfirmacao": 0
+ },
+ "precoAtual": 0.06123,
+ "plano": {
+  "projetado": true,
+  "entrada": 0.059,
+  "stop": 0.054,
+  "alvo1": 0.0705,
+  "alvo2": 0.08,
+  "rr": 2.3
+ },
  "etapas": [
-  { "n": 1, "nome": "Contexto", "status": "cumprida", "evidencia": "Tendência de baixa no diário: topos e fundos descendentes de ≈0,130 até ≈0,055. O repique a ≈0,081 fez um topo mais baixo que ≈0,095. Controle vendedor; compra só com captura." },
-  { "n": 2, "nome": "Região", "status": "cumprida", "evidencia": "Lateral de ≈3 meses entre ≈0,056 e ≈0,071 depois da queda forte (causa de Wyckoff). O rompimento para ≈0,081 não segurou e o preço voltou ao fundo: sinal de força de topo (possível UTAD), não de fundo." },
-  { "n": 3, "nome": "Liquidez", "status": "cumprida", "evidencia": "Fundos iguais em ≈0,056 tocados 3 a 4 vezes: muitos stops de compradores logo abaixo." },
-  { "n": 4, "nome": "Captura", "status": "pendente", "evidencia": "Ainda não houve fechamento diário abaixo de 0,056 com volta para dentro da lateral. O preço está a ≈9% acima desse nível." },
-  { "n": 5, "nome": "Confirmação", "status": "pendente", "evidencia": "Depende da captura: CHoCH no 1h (fechamento acima do último topo da queda) com candle de corpo grande ou FVG." },
-  { "n": 6, "nome": "Entrada no teste", "status": "pendente", "evidencia": "Na POC (preço de maior volume) da perna de confirmação; o print não mostra volume, então não dá para medir agora." }
+  {
+   "n": 1,
+   "nome": "Contexto",
+   "status": "cumprida",
+   "evidencia": "Tendência de baixa no diário: topos e fundos descendentes de ≈0,130 até ≈0,055. O repique a ≈0,081 fez um topo mais baixo que ≈0,095. Controle vendedor; compra só com captura."
+  },
+  {
+   "n": 2,
+   "nome": "Região",
+   "status": "cumprida",
+   "evidencia": "Lateral de ≈3 meses entre ≈0,056 e ≈0,071 depois da queda forte (causa de Wyckoff). O rompimento para ≈0,081 não segurou e o preço voltou ao fundo: sinal de força de topo (possível UTAD), não de fundo."
+  },
+  {
+   "n": 3,
+   "nome": "Liquidez",
+   "status": "cumprida",
+   "evidencia": "Fundos iguais em ≈0,056 tocados 3 a 4 vezes: muitos stops de compradores logo abaixo. IFR com divergência de alta nesses fundos (mínimas do IFR subindo com o preço parado): a oferta perde força ali."
+  },
+  {
+   "n": 4,
+   "nome": "Captura",
+   "status": "pendente",
+   "evidencia": "Ainda não houve fechamento diário abaixo de 0,056 com volta para dentro da lateral. O preço está a ≈8% acima desse nível. Se a captura vier com o IFR ainda em divergência, o item 'divergência de IFR' passa a contar na nota."
+  },
+  {
+   "n": 5,
+   "nome": "Confirmação",
+   "status": "pendente",
+   "evidencia": "Depende da captura: CHoCH no 1h (fechamento acima do último topo da queda) com candle de corpo grande ou FVG."
+  },
+  {
+   "n": 6,
+   "nome": "Entrada no teste",
+   "status": "pendente",
+   "evidencia": "Na POC (preço de maior volume) da perna de confirmação; o print não mostra volume, então não dá para medir agora."
+  }
  ],
- "leitura": { "tendencia": "baixa", "estrutura": "Queda forte de ≈0,130 para ≈0,058 em poucas semanas, seguida de lateralização longa entre ≈0,056 e ≈0,071. Um repique saiu da lateral até ≈0,081 (topo mais baixo que ≈0,095) e devolveu tudo, voltando ao fundo. O preço está na metade de baixo da lateral, logo acima dos fundos iguais. Sem volume no print.", "niveis": [ { "preco": 0.0950, "tipo": "resistencia", "nome": "Último topo relevante antes da queda" }, { "preco": 0.0800, "tipo": "resistencia", "nome": "Topo do repique (possível UTAD)" }, { "preco": 0.0705, "tipo": "resistencia", "nome": "Topo da lateral" }, { "preco": 0.0560, "tipo": "liquidez", "nome": "Fundos iguais (stops de compradores)" }, { "preco": 0.0540, "tipo": "suporte", "nome": "Abaixo dos fundos: possível mínima da captura" } ] },
- "tese": "O ME está no fundo de uma lateral longa, dentro de uma tendência de baixa. Pela KOR, a oportunidade de compra só existe se o preço capturar a liquidez dos fundos iguais em ≈0,056 (fechamento diário abaixo e volta para dentro em até 3 candles) e depois confirmar no 1h com um CHoCH com intenção. Nesse caso a entrada fica no teste da perna de confirmação (≈0,059), o stop abaixo da mínima da captura (≈0,054) e os alvos no topo da lateral (≈0,0705) e no topo do repique (≈0,080). O cenário contrário é igualmente possível: se o preço fechar abaixo de 0,056 e aceitar (2 a 3 fechamentos sem voltar), a lateral vira distribuição e a projeção da altura dela (≈0,015) aponta para ≈0,041. Enquanto não houver captura, não há nada para fazer.",
+ "leitura": {
+  "tendencia": "baixa",
+  "estrutura": "Queda forte de ≈0,130 para ≈0,058 em poucas semanas, seguida de lateralização longa entre ≈0,056 e ≈0,071. Um repique saiu da lateral até ≈0,081 (topo mais baixo que ≈0,095) e devolveu tudo, voltando ao fundo. O preço está na metade de baixo da lateral, logo acima dos fundos iguais. Sem volume no print. IFR (14): nos três toques nos fundos iguais (≈0,056) o IFR fez mínimas cada vez mais altas (≈30 → ≈33 → ≈38) com o preço no mesmo nível: divergência de alta clássica, que indica pressão vendedora diminuindo no fundo. Agora o IFR está em ≈40, abaixo da média, sem sobrevenda. O volume aparece comprimido demais para ser lido.",
+  "niveis": [
+   {
+    "preco": 0.095,
+    "tipo": "resistencia",
+    "nome": "Último topo relevante antes da queda"
+   },
+   {
+    "preco": 0.08,
+    "tipo": "resistencia",
+    "nome": "Topo do repique (possível UTAD)"
+   },
+   {
+    "preco": 0.0705,
+    "tipo": "resistencia",
+    "nome": "Topo da lateral"
+   },
+   {
+    "preco": 0.056,
+    "tipo": "liquidez",
+    "nome": "Fundos iguais (stops de compradores)"
+   },
+   {
+    "preco": 0.054,
+    "tipo": "suporte",
+    "nome": "Abaixo dos fundos: possível mínima da captura"
+   }
+  ],
+  "ifr": {
+   "valor": 40,
+   "divergencia": "alta (classica) nos fundos iguais",
+   "sobrevenda": false
+  }
+ },
+ "tese": "O ME está no fundo de uma lateral longa, dentro de uma tendência de baixa. Pela KOR, a oportunidade de compra só existe se o preço capturar a liquidez dos fundos iguais em ≈0,056 (fechamento diário abaixo e volta para dentro em até 3 candles) e depois confirmar no 1h com um CHoCH com intenção. Nesse caso a entrada fica no teste da perna de confirmação (≈0,059), o stop abaixo da mínima da captura (≈0,054) e os alvos no topo da lateral (≈0,0705) e no topo do repique (≈0,080). O cenário contrário é igualmente possível: se o preço fechar abaixo de 0,056 e aceitar (2 a 3 fechamentos sem voltar), a lateral vira distribuição e a projeção da altura dela (≈0,015) aponta para ≈0,041. A divergência de alta do IFR nos fundos iguais é um ponto a favor da compra se a captura acontecer: mostra que cada visita ao fundo teve menos força vendedora. Enquanto não houver captura, não há nada para fazer.",
  "invalidacao": "Da ideia de compra: 2 a 3 fechamentos diários abaixo de 0,056 sem retorno (aceitação abaixo da lateral). Da operação, se aberta: fechamento abaixo de 0,054.",
  "checklist": [
-  { "item": "Candle diário fecha abaixo de 0,056 e, em até 3 candles, outro fecha de volta acima", "critico": true },
-  { "item": "No 1h, fechamento acima do último topo da queda com candle de corpo grande ou FVG", "critico": true },
-  { "item": "Entrada no teste da perna de confirmação; R:R ≥ 2 até 0,0705", "critico": true },
-  { "item": "Volume acima da média na captura (abrir o volume no gráfico)", "critico": false },
-  { "item": "Divergência de IFR no fundo (abrir o IFR)", "critico": false }
+  {
+   "item": "Candle diário fecha abaixo de 0,056 e, em até 3 candles, outro fecha de volta acima",
+   "critico": true
+  },
+  {
+   "item": "No 1h, fechamento acima do último topo da queda com candle de corpo grande ou FVG",
+   "critico": true
+  },
+  {
+   "item": "Entrada no teste da perna de confirmação; R:R ≥ 2 até 0,0705",
+   "critico": true
+  },
+  {
+   "item": "Volume acima da média na captura (abrir o volume no gráfico)",
+   "critico": false
+  },
+  {
+   "item": "A divergência de alta do IFR se mantém na captura (nova mínima do preço sem nova mínima do IFR)",
+   "critico": false
+  }
  ],
- "oQueFalta": "O preço precisa cair ≈9%, fechar abaixo de 0,056, voltar para dentro da lateral e confirmar no 1h. Só então a entrada existe. Como o contexto é de baixa, a classe máxima será B mesmo com tudo cumprido.",
+ "oQueFalta": "O preço precisa cair ≈8%, fechar abaixo de 0,056, voltar para dentro da lateral e confirmar no 1h. Só então a entrada existe. Com a captura mantendo a divergência do IFR, a nota sobe para 1; como o contexto é de baixa, a classe máxima será B.",
  "aviso": "Ferramenta de estudo, não recomendação de investimento."
 }
