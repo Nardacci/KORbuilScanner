@@ -1,5 +1,17 @@
 [
  {
+  "id": "meusdt-1d-2026-10-27-1500",
+  "geradoEm": "2026-10-27T15:00:00-03:00",
+  "ativo": "MEUSDT",
+  "tf": "1D",
+  "veredito": "aguardar",
+  "direcao": "compra",
+  "classe": "C",
+  "nota": 0,
+  "rr": 2.3,
+  "imagem": "meusdt-1d-2026-10-27-1500.png"
+ },
+ {
   "id": "exemplo-4h-2026-10-27-1200",
   "geradoEm": "2026-10-27T12:00:00-03:00",
   "ativo": "EXEMPLO",

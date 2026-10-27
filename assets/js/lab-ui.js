@@ -1,8 +1,8 @@
 // Aba "Laboratório KOR": baixa o histórico de 15m da Binance (fica guardado no navegador)
 // e roda a prova da Estratégia KOR, com o veredito pelos critérios fixados.
 
-import { klinesRange, setOnThrottle } from './binance.js?v=2026.10.27-0007';
-import { runSymbol, buildReport, LAB_SYMBOLS, LAB_START, VARIANTS, variantSummary } from './korlab.js?v=2026.10.27-0007';
+import { klinesRange, setOnThrottle } from './binance.js?v=2026.10.27-0013';
+import { runSymbol, buildReport, LAB_SYMBOLS, LAB_START, VARIANTS, variantSummary } from './korlab.js?v=2026.10.27-0013';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
