@@ -1,0 +1,31 @@
+{
+ "id": "meusdt-1d-2026-11-02-1200",
+ "geradoEm": "2026-11-02T12:00:00-03:00",
+ "imagem": "meusdt-1d-2026-11-02-1200.png",
+ "ativo": "MEUSDT", "tf": "1D", "tfExecucao": "1h", "fonte": "print",
+ "anterior": "meusdt-1d-2026-10-27-1500",
+ "veredito": "aguardar", "direcao": "compra", "classe": "C", "nota": 1,
+ "notaItens": { "contexto": 0, "forca": 0, "pocNaRegiao": 0, "volumeCaptura": 0, "fibo618": 0, "divergenciaIfr": 1, "rompimentoTipo1": 0, "fvgConfirmacao": 0 },
+ "precoAtual": 0.05281,
+ "plano": { "projetado": true, "entrada": 0.0575, "stop": 0.0515, "alvo1": 0.0705, "alvo2": 0.0800, "rr": 2.2 },
+ "etapas": [
+  { "n": 1, "nome": "Contexto", "status": "cumprida", "evidencia": "Tendência de baixa no diário continua: o preço fez nova mínima (0,0527) abaixo de toda a lateral de junho a outubro." },
+  { "n": 2, "nome": "Região", "status": "cumprida", "evidencia": "Lateral de ≈0,0565 a ≈0,071 (5 meses) com força de topo: o repique a 0,081 foi devolvido e o fundo acabou de ser perdido." },
+  { "n": 3, "nome": "Liquidez", "status": "cumprida", "evidencia": "Fundos iguais em ≈0,0565 (linha branca), tocados 4 vezes. Era o alvo dos stops; agora foi atingido." },
+  { "n": 4, "nome": "Captura", "status": "parcial", "evidencia": "O candle de hoje fechou abaixo de 0,0565 (fechamento 0,0528, queda de 4,3%). Pela KOR, a captura só se confirma se o preço fechar de volta acima de 0,0565 em até 3 candles diários (até 5/11). O rompimento veio com volume normal, sem pico: não há sinal claro de stops sendo absorvidos." },
+  { "n": 5, "nome": "Confirmação", "status": "pendente", "evidencia": "Só depois da volta para dentro: CHoCH no 1h (fechamento acima do último topo da queda) com candle de corpo grande ou FVG." },
+  { "n": 6, "nome": "Entrada no teste", "status": "pendente", "evidencia": "POC da perna de confirmação; o volume do print está comprimido demais para medir." }
+ ],
+ "leitura": { "tendencia": "baixa", "estrutura": "O preço perdeu o fundo da lateral de 5 meses com um candle de corpo cheio e fechou em 0,0528, a menor mínima do gráfico. A última perna de queda, de 0,081 até aqui, veio sem pausa e com corpos crescentes. Volume do rompimento sem destaque. IFR em ≈33: a mínima do IFR continua acima das mínimas de junho e julho (≈28–30) apesar de o preço estar mais baixo, ou seja, a divergência de alta se manteve na captura. Esse é o único ponto a favor da compra neste momento.", "ifr": { "valor": 33, "divergencia": "alta (mantida na nova mínima do preço)", "sobrevenda": false }, "niveis": [ { "preco": 0.0800, "tipo": "resistencia", "nome": "Topo do repique (UTAD)" }, { "preco": 0.0705, "tipo": "resistencia", "nome": "Topo da lateral" }, { "preco": 0.0565, "tipo": "nivel-chave", "nome": "Fundo da lateral (linha branca): o preço precisa voltar acima dele" }, { "preco": 0.0527, "tipo": "suporte", "nome": "Mínima de hoje (mínima da captura, por enquanto)" }, { "preco": 0.0410, "tipo": "alvo-venda", "nome": "Projeção da altura da lateral para baixo" } ] },
+ "tese": "A varredura dos fundos iguais aconteceu: o diário fechou abaixo de 0,0565. Agora a KOR está num ponto de decisão com dois caminhos. Caminho A (compra, Spring): o preço fecha de volta acima de 0,0565 em até 3 candles diários; depois, o 1h faz um CHoCH com intenção; a entrada fica no teste da perna de confirmação (≈0,0575), o stop abaixo da mínima da captura (≈0,0515) e os alvos em 0,0705 e 0,080. A divergência de alta do IFR, mantida na nova mínima, ajuda esse caminho. Caminho B (venda, distribuição confirmada): o preço aceita abaixo de 0,0565 (2 a 3 fechamentos sem voltar) e depois retesta a linha por baixo, com rejeição (LPSY); a venda entra nesse reteste (≈0,0565), stop acima de 0,059 e alvo na projeção da altura da lateral, ≈0,041. Nenhum dos dois caminhos está pronto hoje: comprar agora é segurar uma faca caindo, e vender agora é entrar depois de uma queda de 30% desde 0,081, no meio do movimento. Observar os próximos 3 candles diários.",
+ "invalidacao": "Caminho A morre se não houver fechamento acima de 0,0565 até 5/11, ou se o preço fechar abaixo de 0,0515. Caminho B morre se o preço fechar de volta acima de 0,0565.",
+ "checklist": [
+  { "item": "Fechamento diário acima de 0,0565 em até 3 candles (até 5/11) — sem isso, não há Spring", "critico": true },
+  { "item": "No 1h, fechamento acima do último topo da queda com candle de corpo grande ou FVG", "critico": true },
+  { "item": "Entrada no teste da perna de confirmação; R:R ≥ 2 até 0,0705", "critico": true },
+  { "item": "Volume acima da média no candle da volta (abrir o volume em escala normal)", "critico": false },
+  { "item": "Se não voltar: esperar o reteste de 0,0565 por baixo antes de pensar em venda", "critico": false }
+ ],
+ "oQueFalta": "Nos próximos 3 candles diários o mercado decide: volta acima de 0,0565 (compra, via Spring) ou aceitação abaixo (venda, no reteste por baixo). Até lá, nada a fazer. Mesmo no caminho A, a classe máxima será B, porque o contexto é de baixa.",
+ "aviso": "Ferramenta de estudo, não recomendação de investimento."
+}
