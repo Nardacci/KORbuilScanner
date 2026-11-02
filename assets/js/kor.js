@@ -7,7 +7,8 @@
 //        - lateral rompida (região abandonada: do topo da lateral até a POC).
 //   3. Liquidez criada perto da região (fundo da lateral; fundos formados depois do bloco).
 //   4. Captura: Spring (candle FECHA abaixo do suporte e volta em até `springBars`) ou
-//      varredura dos fundos + toque na região.
+//      varredura dos fundos + toque na região. Modo 'reteste': entrada limitada direto no bloco
+//      deixado por um CHoCH cuja origem varreu um fundo anterior (fundo duplo), sem esperar o tempo menor.
 //   5. Confirmação no tempo menor: fechamento acima do último topo antes da mínima da captura,
 //      com intenção (FVG ou candle de alta com volume alto na perna que saiu da captura).
 //   6. Entrada limitada na POC da perna de confirmação; stop abaixo da mínima da captura;
@@ -18,7 +19,7 @@
 // Tudo é calculado candle a candle com o que já era conhecido (sem olhar o futuro).
 // A venda é o espelho: os mesmos cálculos nos candles invertidos.
 
-import { atr, sma, isPivotHigh, isPivotLow } from './indicators.js?v=2026.11.02-1300';
+import { atr, sma, isPivotHigh, isPivotLow } from './indicators.js?v=2026.11.02-2305';
 
 export const KOR_DEFAULTS = {
   pivot: 3,            // topos/fundos do tempo maior (candles de cada lado)
@@ -38,6 +39,11 @@ export const KOR_DEFAULTS = {
   minRiskPct: 0,       // descarta stops curtos demais (% do preço), onde os custos pesam muito
   tpMaxRR: 0,          // limita o alvo 1 a X vezes o risco (0 = alvo na liquidez, sem limite)
   onlyAligned: false,  // só opera a favor do contexto
+  obMode: 'liquidez',  // 'liquidez' = exige liquidez criada depois do bloco + CHoCH no tempo menor
+                       // 'reteste'  = entrada limitada direto no reteste do bloco (setup "CHoCH + OB + reteste")
+  obOnlyChoch: true,   // no modo 'reteste', só blocos deixados por CHoCH (reversão), não por BOS
+  obRequireSweep: true,// no modo 'reteste', a origem da perna precisa ter varrido um fundo anterior (fundo duplo)
+  sweepLookback: 60,   // candles do tempo maior para procurar o fundo varrido na origem
   minRR: 2,
   fallbackRR: 3,       // alvo quando não há liquidez oposta
   targetLookback: 300,
@@ -161,6 +167,8 @@ export function contextCaptures(H, o, atrH) {
       let lo = lastHigh.i;
       for (let t = lastHigh.i; t <= i; t++) if (H[t].l < H[lo].l) lo = t;
       const leg = { low: H[lo].l, high: c.h };
+      // A origem da perna varreu um fundo confirmado anterior (fundo duplo / captura)?
+      const sweptOrigin = lows.some((L) => L.i < lo && lo - L.i <= o.sweepLookback && leg.low < L.p);
       if (leg.high - leg.low >= o.legMinAtr * a) {
         let ob = -1;
         for (let t = Math.min(lo + 2, i - 1); t >= Math.max(0, lo - 3); t--) if (H[t].c < H[t].o) { ob = t; break; }
@@ -170,7 +178,7 @@ export function contextCaptures(H, o, atrH) {
           const vp = volumeProfile(H, lo, i);
           const top = Math.max(H[ob].o, H[ob].c), bottom = H[ob].l;
           zones.push({
-            kind: 'ob', top, bottom, created: i, src: ob, leg, type, fvg,
+            kind: 'ob', top, bottom, created: i, src: ob, leg, type, fvg, sweptOrigin,
             pocInZone: vp.poc >= bottom && vp.poc <= top,
           });
         }
@@ -231,12 +239,16 @@ export function contextCaptures(H, o, atrH) {
       z.dead = true; // cada região é usada uma vez
       if (z.kind === 'ob' && z.top > z.leg.low + 0.5 * (z.leg.high - z.leg.low)) continue; // fora do desconto
       const liq = liqLows.filter((L) => L.i > z.created && L.conf <= i && L.p > z.top && L.p < z.leg.high);
-      if (!liq.length) continue; // sem liquidez criada antes da mitigação: não há setup
+      const reteste = o.obMode === 'reteste' && z.kind === 'ob';
+      if (reteste) {
+        if (o.obOnlyChoch && z.type !== 'CHoCH') continue;
+        if (o.obRequireSweep && !z.sweptOrigin) continue;
+      } else if (!liq.length) continue; // sem liquidez criada antes da mitigação: não há setup
       caps.push({
-        kind: z.kind, hIdx: i, startT: c.t, validT: c.t,
+        kind: z.kind, hIdx: i, startT: c.t, validT: c.t, reteste,
         invalid: z.bottom - 0.25 * a, low: c.l,
         region: { top: z.top, bottom: z.bottom, poc: z.region?.poc },
-        liquidity: Math.min(...liq.map((L) => L.p)),
+        liquidity: liq.length ? Math.min(...liq.map((L) => L.p)) : null, sweptOrigin: z.sweptOrigin,
         forca: z.forca ?? null, fvg: z.fvg, pocInZone: z.pocInZone, bosType: z.type,
         context: trend === 1 ? 'alta' : trend === -1 ? 'baixa' : 'equilibrio',
         highs: highs.slice(),
@@ -302,6 +314,7 @@ function scoreOf(cap, conf, rr) {
   if (cap.forca != null && cap.forca >= 3) { s += 2; parts.forca = 2; }
   if (cap.pocInZone) { s += 1; parts.pocNaZona = 1; }
   if (cap.fvg) { s += 1; parts.fvgRegiao = 1; }
+  if (cap.sweptOrigin) { s += 1; parts.capturaNaOrigem = 1; }
   if (conf.ltfFvg) { s += 1; parts.fvgConfirmacao = 1; }
   if (conf.volHigh) { s += 1; parts.volumeConfirmacao = 1; }
   if (rr >= 3) { s += 1; parts.rr3 = 1; }
@@ -372,10 +385,19 @@ export function korSetups(H, L, opts = {}) {
     const atrH = atr(h), atrL = atr(l);
     const volAvgL = sma(l.map((c) => c.v), 20);
     for (const cap of contextCaptures(h, o, atrH)) {
-      const conf = confirmLtf(l, cap, o, atrL, volAvgL, ratio);
+      let conf;
+      if (cap.reteste) {
+        // Ordem limitada na borda do bloco, colocada no primeiro candle menor do toque; stop além do bloco.
+        const j = firstFrom(l, cap.startT) - 1;
+        if (j < 1) continue;
+        const hj0 = lastClosed(h, l[j].T);
+        conf = { j, entry: cap.region.top, capLow: cap.region.bottom, stop: cap.region.bottom - o.stopAtrCtx * atrH[Math.max(0, hj0)], ltfFvg: false, volHigh: false };
+      } else {
+        conf = confirmLtf(l, cap, o, atrL, volAvgL, ratio);
+      }
       if (!conf) continue;
       const hj = lastClosed(h, l[conf.j].T);
-      if (o.stopRef === 'ctx') conf.stop = conf.capLow - o.stopAtrCtx * atrH[hj];
+      if (o.stopRef === 'ctx' && !cap.reteste) conf.stop = conf.capLow - o.stopAtrCtx * atrH[hj];
       const risk = conf.entry - conf.stop;
       const riskPct = risk / Math.abs(conf.entry) * 100;
       if (!(risk > 0) || riskPct > o.maxRiskPct || riskPct < o.minRiskPct) continue;
