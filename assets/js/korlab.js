@@ -8,7 +8,7 @@
 //   - aprovação no período cego: >= 150 operações, expectativa > 0, profit factor > 1,3,
 //     maioria dos ativos positiva e melhor que o aleatório (intervalo de 95% da diferença acima de 0).
 
-import { aggregate, korSetups, simulateKor, mirrorCandles, KOR_DEFAULTS } from './kor.js?v=2026.11.02-1300';
+import { aggregate, korSetups, simulateKor, mirrorCandles, KOR_DEFAULTS } from './kor.js?v=2026.11.02-2305';
 
 export const CUT = Date.UTC(2025, 0, 1);
 export const LAB_START = Date.UTC(2022, 0, 1);
@@ -163,6 +163,10 @@ export const VARIANTS = [
   { id: 'v6', nome: 'v3 + só a favor do contexto', opts: { ...V3, onlyAligned: true } },
   { id: 'v7', nome: 'v3 + entrada no meio da perna', opts: { ...V3, entryMode: 'meio' } },
   { id: 'v8', nome: 'v3 + sem saída parcial', opts: { ...V3, partial: 0 } },
+  { id: 'r1', nome: 'Reteste do OB (CHoCH + fundo duplo), alvo até 3R', opts: { obMode: 'reteste', tpMaxRR: 3 } },
+  { id: 'r2', nome: 'Reteste do OB sem exigir fundo duplo', opts: { obMode: 'reteste', obRequireSweep: false, tpMaxRR: 3 } },
+  { id: 'r3', nome: 'Reteste do OB incluindo blocos de BOS', opts: { obMode: 'reteste', obOnlyChoch: false, tpMaxRR: 3 } },
+  { id: 'r4', nome: 'Reteste do OB, alvo na liquidez (sem limite)', opts: { obMode: 'reteste' } },
 ];
 
 // Resumo de uma variação (sem a lista de operações, para comparar lado a lado).

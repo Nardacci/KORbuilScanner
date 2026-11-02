@@ -94,3 +94,18 @@ test('sem olhar o futuro: cortar os dados não muda os setups anteriores', () =>
     assert.equal(f.stop, s.stop);
   }
 });
+
+test('modo reteste: fundo duplo → CHoCH → bloco → entrada limitada no reteste', () => {
+  // Queda, fundo em 100, repique a 112, novo fundo em 98 (varre o 100), CHoCH acima de 112,
+  // reteste do bloco e alta até 140.
+  const pts = [[0, 160], [400, 100], [480, 112], [560, 98], [640, 120], [720, 100], [900, 140]];
+  const L = path(pts);
+  const H = aggregate(L, H4);
+  const st = korSetups(H, L, { obMode: 'reteste', minClass: 'C', maxRiskPct: 100 });
+  const ob = st.filter((s) => s.kind === 'ob' && s.side === 'long');
+  assert.ok(ob.length >= 1, 'deveria achar o reteste do bloco');
+  const s = ob[0];
+  assert.ok(s.entry > s.stop && s.tp1 > s.entry);
+  assert.ok(s.entry <= 112 && s.entry >= 98, `entrada ${s.entry} fora da perna`);
+  assert.ok(s.parts.capturaNaOrigem === 1, 'a origem varreu o fundo anterior');
+});
