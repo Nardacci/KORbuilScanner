@@ -11,8 +11,8 @@
 //      stop abaixo da mínima do sinal (e do anterior). Se o preço cair até o stop antes, cancela.
 //   Alvo: próxima liquidez acima ou 2× o risco.
 
-import { ema, isPivotHigh } from './indicators.js?v=2026.11.02-2305';
-import { findTarget } from './engine.js?v=2026.11.02-2305';
+import { ema, isPivotHigh } from './indicators.js?v=2026.11.03-1255';
+import { findTarget } from './engine.js?v=2026.11.03-1255';
 
 export function pattern(cs, i) {
   const c = cs[i], p = cs[i - 1];

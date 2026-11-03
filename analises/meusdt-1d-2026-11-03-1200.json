@@ -1,0 +1,31 @@
+{
+ "id": "meusdt-1d-2026-11-03-1200",
+ "geradoEm": "2026-11-03T12:00:00-03:00",
+ "imagem": "meusdt-1d-2026-11-03-1200.png",
+ "ativo": "MEUSDT", "tf": "1D", "tfExecucao": "1h", "fonte": "print",
+ "anterior": "meusdt-1d-2026-11-02-1200",
+ "veredito": "aguardar", "direcao": "compra", "classe": "C", "nota": 1,
+ "notaItens": { "contexto": 0, "forca": 0, "pocNaRegiao": 0, "volumeCaptura": 0, "fibo618": 0, "divergenciaIfr": 1, "rompimentoTipo1": 0, "fvgConfirmacao": 0 },
+ "precoAtual": 0.05193,
+ "plano": { "projetado": true, "entrada": 0.0545, "stop": 0.0480, "alvo1": 0.0705, "alvo2": 0.0800, "rr": 2.5 },
+ "etapas": [
+  { "n": 1, "nome": "Contexto", "status": "cumprida", "evidencia": "Baixa no diário. Nova mínima em 0,0494, abaixo de toda a lateral; o candle de hoje fechou em 0,0519 com pavio inferior (primeira reação compradora)." },
+  { "n": 2, "nome": "Região", "status": "cumprida", "evidencia": "Lateral de ≈0,0565 a ≈0,071 perdida há 2 candles. Pela contagem de Elliott, essa lateral foi a onda 4 de grau maior e a queda atual é a onda 5 final." },
+  { "n": 3, "nome": "Liquidez", "status": "cumprida", "evidencia": "Fundos iguais em 0,0565 varridos; mínima da varredura em 0,0494 até agora." },
+  { "n": 4, "nome": "Captura", "status": "parcial", "evidencia": "Segundo candle abaixo de 0,0565 (fechamento 0,0519). Para ser Spring pela regra da KOR, o preço precisa fechar de volta acima de 0,0565 até 5/11: faltam 2 candles e ≈9% de alta. Está ficando improvável; se não voltar, a lateral foi distribuição e o cenário passa a ser um novo processo de acumulação em níveis mais baixos (fase A: clímax, reação automática, teste)." },
+  { "n": 5, "nome": "Confirmação", "status": "pendente", "evidencia": "CHoCH no 1h com intenção. No diário, o primeiro sinal de virada seria a quebra da linha que liga as ondas (2) e (4); o CHoCH forte é o fechamento acima de 0,0655 (topo da onda 4)." },
+  { "n": 6, "nome": "Entrada no teste", "status": "pendente", "evidencia": "Só depois da confirmação; POC da perna de confirmação." }
+ ],
+ "leitura": { "tendencia": "baixa", "estrutura": "Contagem de Elliott (sua marcação, conferida): do topo 0,081, onda (1) até ≈0,066 (0,015 de queda), onda (2) até ≈0,073 (retração de ≈47%, dentro do normal de 50–61,8%), onda (3) até ≈0,057 (0,016), onda (4) até ≈0,0655 (retração de ≈53%; não invade o território da onda 1, por 0,0005) e onda (5) em andamento, em 0,0494 (0,016 até aqui). As três regras invioláveis estão respeitadas: a onda 2 não retraçou mais de 100% da onda 1, a onda 3 não é a mais curta e a onda 4 não sobrepôs a onda 1. Ressalvas: a onda 3 não é a estendida (as três têm o mesmo tamanho, o que é raro) e a onda 4 é profunda para o padrão. Projeções da onda 5: igualdade com a onda 1 = 0,0505 (já atingida; a mínima foi 0,0494); extensão de 1,618 = 0,041, que coincide com a projeção da altura da lateral para baixo. O IFR em ≈33 na onda 5 está acima do IFR na onda 3 e nas mínimas de junho e julho: divergência de alta, o sinal clássico de onda 5 perdendo força. Volume dos dois candles de queda um pouco acima da média, sem clímax claro.", "elliott": { "contagem": "impulso de baixa (1)-(2)-(3)-(4)-(5) a partir de 0,081", "ondaAtual": 5, "regrasOk": true, "alvoIgualdade": 0.0505, "alvo1618": 0.041 }, "ifr": { "valor": 33, "divergencia": "alta (onda 5 x onda 3)", "sobrevenda": false }, "niveis": [ { "preco": 0.0800, "tipo": "resistencia", "nome": "Topo do repique (origem do impulso)" }, { "preco": 0.0705, "tipo": "resistencia", "nome": "Topo da lateral (alvo 1 da compra)" }, { "preco": 0.0655, "tipo": "resistencia", "nome": "Topo da onda (4): CHoCH forte no diário" }, { "preco": 0.0565, "tipo": "nivel-chave", "nome": "Fundo da lateral perdido" }, { "preco": 0.0505, "tipo": "suporte", "nome": "Onda 5 = onda 1 (atingido)" }, { "preco": 0.0494, "tipo": "suporte", "nome": "Mínima atual" }, { "preco": 0.0410, "tipo": "suporte", "nome": "Onda 5 = 1,618 × onda 1 e projeção da lateral" } ] },
+ "tese": "Elliott e KOR contam a mesma história: a queda desde 0,081 está na quinta e última onda, já com o alvo de igualdade atingido e com divergência de IFR, ou seja, o movimento de baixa está perdendo força. Mas 'perdendo força' não é entrada. Dois cenários. Cenário 1 (mais provável pela estrutura): a onda 5 termina entre 0,0494 e 0,041 e começa uma correção de alta em três ondas (A-B-C) rumo ao território da onda 4, entre 0,058 e 0,070. A entrada da KOR nesse cenário vem com a confirmação: CHoCH no 1h a partir de um fundo que segure, entrada no teste (≈0,0545 se o fundo for o atual), stop abaixo da mínima que originou a confirmação (≈0,048) e alvo 1 em 0,0705. Cenário 2: a onda 5 se estende até ≈0,041 antes de virar; nesse caso o candle de hoje foi só uma pausa e a entrada será mais abaixo, com os mesmos gatilhos. O que não fazer: comprar antes da confirmação porque 'a onda 5 já deu' (onda 5 estendida é o erro clássico), nem vender agora, no final de um impulso que já cumpriu o alvo de igualdade e mostra divergência.",
+ "invalidacao": "Da ideia de compra: fechamento diário abaixo de 0,041 com continuidade (a contagem precisaria ser refeita). Da operação, se aberta: fechamento abaixo da mínima que originou a confirmação.",
+ "checklist": [
+  { "item": "Fundo segurando: 2 a 3 candles diários sem nova mínima, ou nova mínima com IFR mais alto (divergência mantida)", "critico": true },
+  { "item": "CHoCH no 1h com candle de corpo grande ou FVG, saindo desse fundo", "critico": true },
+  { "item": "Entrada no teste da perna de confirmação; R:R ≥ 2 até 0,0705", "critico": true },
+  { "item": "Quebra da linha (2)-(4) no diário reforça; fechamento acima de 0,0655 confirma a virada no diário", "critico": false },
+  { "item": "Se o preço for a 0,041: repetir a checagem lá, com a projeção 1,618 e a lateral como confluência", "critico": false }
+ ],
+ "oQueFalta": "Um fundo que segure (ou o próximo, em ≈0,041) e a confirmação no 1h. Elliott diz 'perto do fim da queda'; a KOR diz 'só entra depois da confirmação'. Contra o contexto, a classe máxima será B.",
+ "aviso": "Ferramenta de estudo, não recomendação de investimento."
+}

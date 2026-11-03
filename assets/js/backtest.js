@@ -1,8 +1,8 @@
 // Backtest: roda o motor no histórico, uma posição por ativo de cada vez,
 // e calcula as métricas separando o período de ajuste do período "cego".
 
-import { DEFAULTS, makeHtfTrend } from './engine.js?v=2026.11.02-2305';
-import { detectWith } from './methods.js?v=2026.11.02-2305';
+import { DEFAULTS, makeHtfTrend } from './engine.js?v=2026.11.03-1255';
+import { detectWith } from './methods.js?v=2026.11.03-1255';
 
 const CLOSED = new Set(['ganho', 'perda', 'tempo', 'bos', 'onda', 'kijun']);
 
