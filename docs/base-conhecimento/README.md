@@ -20,6 +20,7 @@ entram como complemento (critérios objetivos, probabilidades, gestão de risco)
 | 8 | Al Brooks — Trading Ranges (289 p.) | [08-brooks-trading-ranges.md](08-brooks-trading-ranges.md) | lateralizações, falsos rompimentos, measured move, probabilidades |
 | 9 | Flávio Lemos — Análise Técnica (387 p.) | [09-flavio-lemos-analise-tecnica.md](09-flavio-lemos-analise-tecnica.md) | Dow, padrões gráficos (taxas de Bulkowski), indicadores, gestão |
 | 10 | Michael Covel — Trend Following (200 p.) | [10-trend-following.md](10-trend-following.md) | gestão de risco, tamanho de posição, saídas, trailing |
+| 12 | Mapa operacional (esquema anotado XAUUSD 4h) | [12-mapa-operacional-excelencia.md](12-mapa-operacional-excelencia.md) | os 5 contextos, definição de cenário A+, POI.D, SMS |
 | 11 | Colin Bennett — Trading Volatility (317 p.) | [11-trading-volatility.md](11-trading-volatility.md) | volatilidade realizada, regimes (a maior parte é opções; pouco se aplica) |
 
 Observações:
